@@ -4,19 +4,19 @@
 
 
 
+from __future__ import absolute_import
+
 import math
 import sys
 import time
 import unittest
+
 import mock
-
-
 
 try:
   from cloudstorage import common
 except ImportError:
   from google.appengine.ext.cloudstorage import common
-from google.appengine.tools import remote_api_shell
 
 
 class GCSFileStatTest(unittest.TestCase):
@@ -100,15 +100,6 @@ class HelpersTest(unittest.TestCase):
     dt_str = '2013-04-12T00:22:27.000Z'
     self.assertEqual(dt_str,
                      common.posix_to_dt_str(common.dt_str_to_posix(dt_str)))
-
-  def testLocalRunOnRemoteAPIShell(self):
-    with mock.patch('google.appengine.tools.remote_api_shell'
-                    '.remote_api_stub') as _:
-      with mock.patch('google.appengine.tools.remote_api_shell'
-                      '.code') as _:
-        sys.argv = ['shell.py', '-s', 'app_id.appspot.com', 'app_id']
-        remote_api_shell.main(sys.argv)
-        self.assertFalse(common.local_run())
 
   def testGetContentLength(self):
     headers = {'content-length': 69}

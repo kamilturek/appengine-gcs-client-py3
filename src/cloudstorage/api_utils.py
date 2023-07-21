@@ -16,42 +16,38 @@
 
 
 
+from __future__ import absolute_import
+
 __all__ = ['set_default_retry_params',
            'RetryParams',
           ]
 
 import copy
-import httplib
 import logging
 import math
 import os
 import threading
 import time
-import urllib
 
+import six.moves.http_client
+import six.moves.urllib.error
+import six.moves.urllib.parse
+import six.moves.urllib.request
 
 try:
-  from google.appengine.api import app_identity
-  from google.appengine.api import urlfetch
-  from google.appengine.api import urlfetch_errors
+  from google.appengine import runtime
+  from google.appengine.api import app_identity, urlfetch, urlfetch_errors
   from google.appengine.datastore import datastore_rpc
   from google.appengine.ext import ndb
-  from google.appengine.ext.ndb import eventloop
-  from google.appengine.ext.ndb import tasklets
-  from google.appengine.ext.ndb import utils
-  from google.appengine import runtime
+  from google.appengine.ext.ndb import eventloop, tasklets, utils
   from google.appengine.runtime import apiproxy_errors
 except ImportError:
-  from google.appengine.api import app_identity
-  from google.appengine.api import urlfetch
-  from google.appengine.api import urlfetch_errors
-  from google.appengine.datastore import datastore_rpc
   from google.appengine import runtime
-  from google.appengine.runtime import apiproxy_errors
+  from google.appengine.api import app_identity, urlfetch, urlfetch_errors
+  from google.appengine.datastore import datastore_rpc
   from google.appengine.ext import ndb
-  from google.appengine.ext.ndb import eventloop
-  from google.appengine.ext.ndb import tasklets
-  from google.appengine.ext.ndb import utils
+  from google.appengine.ext.ndb import eventloop, tasklets, utils
+  from google.appengine.runtime import apiproxy_errors
 
 
 _RETRIABLE_EXCEPTIONS = (urlfetch.DownloadError,
@@ -91,7 +87,7 @@ def _quote_filename(filename):
   Returns:
     The filename properly quoted to use as URI's path component.
   """
-  return urllib.quote(filename)
+  return six.moves.urllib.parse.quote(filename)
 
 
 def _unquote_filename(filename):
@@ -105,12 +101,12 @@ def _unquote_filename(filename):
   Returns:
     The filename unquoted.
   """
-  return urllib.unquote(filename)
+  return six.moves.urllib.parse.unquote(filename)
 
 
 def _should_retry(resp):
   """Given a urlfetch response, decide whether to retry that request."""
-  return (resp.status_code == httplib.REQUEST_TIMEOUT or
+  return (resp.status_code == six.moves.http_client.REQUEST_TIMEOUT or
           (resp.status_code >= 500 and
            resp.status_code < 600))
 
@@ -170,8 +166,8 @@ class _RetryWrapper(object):
             'Tasklet has exceeded request deadline after %s seconds total',
             time.time() - start_time)
         raise
-      except self.retriable_exceptions as e:
-        pass
+      except self.retriable_exceptions as exc:
+        e = exc
 
       if n == 1:
         logging.debug('Tasklet is %r', tasklet)

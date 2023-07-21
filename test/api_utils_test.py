@@ -2,29 +2,26 @@
 
 """Tests for api_utils.py."""
 
+from __future__ import absolute_import
+
 import os
 import threading
 import time
 import unittest
 
 import mock
-
-from google.appengine.ext import ndb
 from google.appengine import runtime
 from google.appengine.api import apiproxy_stub_map
-from google.appengine.ext import testbed
+from google.appengine.ext import ndb, testbed
 
 try:
-  from cloudstorage import api_utils
-  from google.appengine.api import app_identity
-  from google.appengine.api import urlfetch
-  from google.appengine.api import urlfetch_errors
+  from google.appengine.api import app_identity, urlfetch, urlfetch_errors
   from google.appengine.runtime import apiproxy_errors
+
+  from cloudstorage import api_utils
 except ImportError:
+  from google.appengine.api import app_identity, urlfetch, urlfetch_errors
   from google.appengine.ext.cloudstorage import api_utils
-  from google.appengine.api import app_identity
-  from google.appengine.api import urlfetch
-  from google.appengine.api import urlfetch_errors
   from google.appengine.runtime import apiproxy_errors
 
 

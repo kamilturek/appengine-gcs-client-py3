@@ -3,25 +3,21 @@
 
 
 
-import httplib
+from __future__ import absolute_import
+
 import pickle
 import unittest
-import mock
 
-from google.appengine.ext import ndb
-from google.appengine.api import app_identity
-from google.appengine.api import memcache
-from google.appengine.api import urlfetch
-from google.appengine.ext import testbed
+import mock
+import six
+import six.moves.http_client
+from google.appengine.api import app_identity, memcache, urlfetch
+from google.appengine.ext import ndb, testbed
 
 try:
-  from cloudstorage import api_utils
-  from cloudstorage import rest_api
-  from cloudstorage import test_utils
+  from cloudstorage import api_utils, rest_api, test_utils
 except ImportError:
-  from google.appengine.ext.cloudstorage import api_utils
-  from google.appengine.ext.cloudstorage import rest_api
-  from google.appengine.ext.cloudstorage import test_utils
+  from google.appengine.ext.cloudstorage import api_utils, rest_api, test_utils
 
 
 class RestApiTest(unittest.TestCase):
@@ -229,7 +225,7 @@ class RestApiTest(unittest.TestCase):
     pickled_api = pickle.loads(pickle.dumps(api))
     self.assertEqual(0, len(set(api.__dict__.keys()) ^
                             set(pickled_api.__dict__.keys())))
-    for k, v in api.__dict__.iteritems():
+    for k, v in six.iteritems(api.__dict__):
       if not hasattr(v, '__call__'):
         self.assertEqual(v, pickled_api.__dict__[k])
 
@@ -251,13 +247,13 @@ class RestApiTest(unittest.TestCase):
     resp_fut1 = ndb.Future()
     resp_fut1.set_exception(urlfetch.DownloadError())
     resp_fut2 = ndb.Future()
-    resp_fut2.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut2.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                        None, None))
     ndb.Context.urlfetch = mock.create_autospec(
         ndb.Context.urlfetch,
         side_effect=[resp_fut1, resp_fut2])
 
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
+    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
     self.assertEqual(
         90, ndb.Context.urlfetch.call_args_list[0][1]['deadline'])
     self.assertEqual(
@@ -269,29 +265,29 @@ class RestApiTest(unittest.TestCase):
     resp_fut1 = ndb.Future()
     resp_fut1.set_exception(urlfetch.DownloadError())
     resp_fut2 = ndb.Future()
-    resp_fut2.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut2.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                        None, None))
     ndb.Context.urlfetch = mock.create_autospec(
         ndb.Context.urlfetch,
         side_effect=[resp_fut1, resp_fut2])
 
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
+    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
     self.assertEqual(2, ndb.Context.urlfetch.call_count)
 
   def testRetryAfterDoRequestResponseTimeout(self):
     api = rest_api._RestApi('scope')
 
     resp_fut1 = ndb.Future()
-    resp_fut1.set_result(test_utils.MockUrlFetchResult(httplib.REQUEST_TIMEOUT,
+    resp_fut1.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.REQUEST_TIMEOUT,
                                                        None, None))
     resp_fut2 = ndb.Future()
-    resp_fut2.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut2.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                        None, None))
     ndb.Context.urlfetch = mock.create_autospec(
         ndb.Context.urlfetch,
         side_effect=[resp_fut1, resp_fut2])
 
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
+    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
     self.assertEqual(2, ndb.Context.urlfetch.call_count)
 
   def testRetryAfterAppIdentityError(self):
@@ -306,13 +302,13 @@ class RestApiTest(unittest.TestCase):
                      token_fut])
 
     resp_fut = ndb.Future()
-    resp_fut.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                       None, None))
     ndb.Context.urlfetch = mock.create_autospec(
         ndb.Context.urlfetch,
         side_effect=[resp_fut])
 
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
+    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
     self.assertEqual(
         'OAuth token1',
         ndb.Context.urlfetch.call_args[1]['headers']['authorization'])

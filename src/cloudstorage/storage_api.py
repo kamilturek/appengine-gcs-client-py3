@@ -61,7 +61,6 @@ def _get_storage_api(retry_params, account_id=None):
     --default_gcs_bucket_name to set the default bucket.
   """
 
-
   api = _StorageApi(_StorageApi.full_control_scope,
                     service_account_id=account_id,
                     retry_params=retry_params)
@@ -325,7 +324,7 @@ class ReadBuffer(object):
     """
     return self
 
-  def next(self):
+  def __next__(self):
     line = self.readline()
     if not line:
       raise StopIteration()
@@ -389,7 +388,7 @@ class ReadBuffer(object):
     """
     self._check_open()
     if not self._remaining():
-      return ''
+      return b''
 
     data_list = []
     while True:
@@ -418,7 +417,7 @@ class ReadBuffer(object):
 
     if self._buffer_future is None:
       self._request_next_buffer()
-    return ''.join(data_list)
+    return b''.join(data_list)
 
   def _remaining(self):
     return self._file_size - self._offset

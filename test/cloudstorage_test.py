@@ -12,24 +12,13 @@ import pickle
 import time
 import unittest
 
-from google.appengine.ext import testbed
 from six.moves import range
 
-try:
-  # from google.appengine.ext.cloudstorage import cloudstorage_stub
+import cloudstorage
+from cloudstorage import cloudstorage_api, common, errors, storage_api
 
-  import cloudstorage
-  from cloudstorage import cloudstorage_api, common, errors, storage_api
-except ImportError:
-  from google.appengine.ext import cloudstorage
-  from google.appengine.ext.cloudstorage import (
-      cloudstorage_api,
-      cloudstorage_stub,
-      common,
-      errors,
-      storage_api,
-  )
-
+# from google.appengine.ext import testbed
+from cloudstorage.port import testbed
 
 BUCKET = '/bucket'
 TESTFILE = BUCKET + '/testfile'
@@ -80,9 +69,9 @@ class IrregularPatternTest(unittest.TestCase):
     a, b = 0, 0
     f = cloudstorage.open(TESTFILE)
     for c in f.read():
-      if c == 'a':
+      if chr(c) == 'a':
         a += 1
-      elif c == 'b':
+      elif chr(c) == 'b':
         b += 1
     self.assertEqual(256+50, a/1024.0)
     self.assertEqual(50, b/1024.0)
@@ -99,12 +88,13 @@ class IrregularPatternTest(unittest.TestCase):
 
     f = cloudstorage.open(TESTFILE)
     for c in f.read():
-      if c == 'a':
+      if chr(c) == 'a':
         a += 1
-      elif c == 'b':
+      elif chr(c) == 'b':
         b += 1
-    self.assertEqual(256+50, a/1024.0)
-    self.assertEqual(256+256+50, b/1024.0)
+
+    self.assertEqual(256+50, a/1024)
+    self.assertEqual(256+256+50, b/1024)
 
 
 class CloudStorageTest(unittest.TestCase):
@@ -512,7 +502,7 @@ class CloudStorageTest(unittest.TestCase):
     result = []
     while True:
       try:
-        result.append(iter(bucket).next().filename)
+        result.append(next(iter(bucket)).filename)
         bucket = pickle.loads(pickle.dumps(bucket))
       except StopIteration:
         break

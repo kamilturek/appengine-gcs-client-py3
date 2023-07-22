@@ -12,22 +12,19 @@ import pickle
 import time
 import unittest
 
+from google.appengine.ext import testbed
 from six.moves import range
 
 import cloudstorage
-from cloudstorage.port.cloudstorage import cloudstorage_stub
 from cloudstorage import cloudstorage_api, common, errors, storage_api
-
-from google.appengine.ext import testbed
+from cloudstorage.port.cloudstorage import cloudstorage_stub
 from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
 
-BUCKET = '/bucket'
-TESTFILE = BUCKET + '/testfile'
-DESTFILE = BUCKET + '/destfile'
-DEFAULT_COMPOSE_CONTENT = b'A'
-DEFAULT_CONTENT = [b'a'*1024*257,
-                   b'b'*1024*257,
-                   b'c'*1024*257]
+BUCKET = "/bucket"
+TESTFILE = BUCKET + "/testfile"
+DESTFILE = BUCKET + "/destfile"
+DEFAULT_COMPOSE_CONTENT = b"A"
+DEFAULT_CONTENT = [b"a" * 1024 * 257, b"b" * 1024 * 257, b"c" * 1024 * 257]
 
 
 class IrregularPatternTest(unittest.TestCase):
@@ -122,24 +119,28 @@ class CloudStorageTest(unittest.TestCase):
         self.testbed.deactivate()
 
     def CreateFile(self, filename):
-        f = cloudstorage.open(filename,
-                              'w',
-                              'text/plain',
-                              {'x-goog-meta-foo': 'foo',
-                              'x-goog-meta-bar': 'bar',
-                              'x-goog-acl': 'public-read',
-                              'cache-control': 'public, max-age=6000',
-                              'content-disposition': 'attachment; filename=f.txt'})
+        f = cloudstorage.open(
+            filename,
+            "w",
+            "text/plain",
+            {
+                "x-goog-meta-foo": "foo",
+                "x-goog-meta-bar": "bar",
+                "x-goog-acl": "public-read",
+                "cache-control": "public, max-age=6000",
+                "content-disposition": "attachment; filename=f.txt",
+            },
+        )
         for content in DEFAULT_CONTENT:
             f.write(content)
         f.close()
 
     def testFilenameEscaping(self):
-        name = BUCKET + '/a b/c d/*%$'
-        with cloudstorage.open(name, 'w') as f:
-            f.write(b'foo')
+        name = BUCKET + "/a b/c d/*%$"
+        with cloudstorage.open(name, "w") as f:
+            f.write(b"foo")
         with cloudstorage.open(name) as f:
-            self.assertEqual(b'foo', f.read())
+            self.assertEqual(b"foo", f.read())
         self.assertEqual(name, cloudstorage.stat(name).filename)
         bucket = cloudstorage.listbucket(BUCKET)
         for stat in bucket:
@@ -147,35 +148,36 @@ class CloudStorageTest(unittest.TestCase):
         cloudstorage.delete(name)
 
     def testGzip(self):
-        with cloudstorage.open(TESTFILE, 'w', 'text/plain',
-                              {'content-encoding': 'gzip'}) as f:
-            gz = gzip.GzipFile('', 'wb', 9, f)
-            gz.write(b'a'*1024)
-            gz.write(b'b'*1024)
+        with cloudstorage.open(
+            TESTFILE, "w", "text/plain", {"content-encoding": "gzip"}
+        ) as f:
+            gz = gzip.GzipFile("", "wb", 9, f)
+            gz.write(b"a" * 1024)
+            gz.write(b"b" * 1024)
             gz.close()
 
         stat = cloudstorage.stat(TESTFILE)
-        self.assertEqual('text/plain', stat.content_type)
-        self.assertEqual('gzip', stat.metadata['content-encoding'])
+        self.assertEqual("text/plain", stat.content_type)
+        self.assertEqual("gzip", stat.metadata["content-encoding"])
         self.assertEqual(37, stat.st_size)
 
         with cloudstorage.open(TESTFILE) as f:
-            gz = gzip.GzipFile('', 'rb', 9, f)
+            gz = gzip.GzipFile("", "rb", 9, f)
             result = gz.read(10)
-            self.assertEqual(b'a'*10, result)
-            self.assertEqual(b'a'*1014 + b'b'*1024, gz.read())
+            self.assertEqual(b"a" * 10, result)
+            self.assertEqual(b"a" * 1014 + b"b" * 1024, gz.read())
 
     def testFlush(self):
         blocksize = 0
-        with cloudstorage.open(TESTFILE, 'w') as f:
+        with cloudstorage.open(TESTFILE, "w") as f:
             blocksize = f._blocksize
-            f.write(b'a'*(blocksize-2))
-            f.write(b'a'*3)
-            f.write(b'a')
+            f.write(b"a" * (blocksize - 2))
+            f.write(b"a" * 3)
+            f.write(b"a")
             f.flush()
             self.assertEqual(2, f._buffered)
             f.flush()
-            f.write(b'a')
+            f.write(b"a")
             f.close()
 
         with cloudstorage.open(TESTFILE) as f:
@@ -183,23 +185,24 @@ class CloudStorageTest(unittest.TestCase):
 
     def testFlush2(self):
         blocksize = 0
-        with cloudstorage.open(TESTFILE, 'w') as f:
+        with cloudstorage.open(TESTFILE, "w") as f:
             blocksize = f._blocksize
-            f.write(b'a'*(blocksize+1))
-            f.write(b'a')
-            f.write(b'a'*(blocksize-1))
+            f.write(b"a" * (blocksize + 1))
+            f.write(b"a")
+            f.write(b"a" * (blocksize - 1))
             f.flush()
             self.assertEqual(1, f._buffered)
 
         with cloudstorage.open(TESTFILE) as f:
-            self.assertEqual(blocksize*2+1, len(f.read()))
+            self.assertEqual(blocksize * 2 + 1, len(f.read()))
 
     def testCopy2(self):
-        with cloudstorage.open(TESTFILE, 'w',
-                              'text/foo', {'x-goog-meta-foo': 'foo'}) as f:
-            f.write(b'abcde')
+        with cloudstorage.open(
+            TESTFILE, "w", "text/foo", {"x-goog-meta-foo": "foo"}
+        ) as f:
+            f.write(b"abcde")
 
-        dst = TESTFILE + 'copy'
+        dst = TESTFILE + "copy"
         self.assertRaises(cloudstorage.NotFoundError, cloudstorage.stat, dst)
         cloudstorage_api.copy2(TESTFILE, dst)
 
@@ -212,29 +215,32 @@ class CloudStorageTest(unittest.TestCase):
         self.assertEqual(src_stat.metadata, dst_stat.metadata)
 
         with cloudstorage.open(dst) as f:
-            self.assertEqual(b'abcde', f.read())
+            self.assertEqual(b"abcde", f.read())
 
     def testCopy2ReplacesMetadata(self):
-        with cloudstorage.open(TESTFILE, 'w',
-                              'text/foo', {'x-goog-meta-foo': 'foo'}) as f:
-            f.write(b'abcde')
+        with cloudstorage.open(
+            TESTFILE, "w", "text/foo", {"x-goog-meta-foo": "foo"}
+        ) as f:
+            f.write(b"abcde")
         src_stat = cloudstorage.stat(TESTFILE)
 
-        cloudstorage_api.copy2(TESTFILE, TESTFILE,
-                              metadata={'x-goog-meta-foo': 'bar',
-                                        'content-type': 'text/bar'})
+        cloudstorage_api.copy2(
+            TESTFILE,
+            TESTFILE,
+            metadata={"x-goog-meta-foo": "bar", "content-type": "text/bar"},
+        )
 
         dst_stat = cloudstorage.stat(TESTFILE)
         self.assertEqual(src_stat.st_size, dst_stat.st_size)
         self.assertEqual(src_stat.etag, dst_stat.etag)
         self.assertEqual(src_stat.st_ctime, dst_stat.st_ctime)
-        self.assertEqual('text/foo', src_stat.content_type)
-        self.assertEqual('text/bar', dst_stat.content_type)
-        self.assertEqual('foo', src_stat.metadata['x-goog-meta-foo'])
-        self.assertEqual('bar', dst_stat.metadata['x-goog-meta-foo'])
+        self.assertEqual("text/foo", src_stat.content_type)
+        self.assertEqual("text/bar", dst_stat.content_type)
+        self.assertEqual("foo", src_stat.metadata["x-goog-meta-foo"])
+        self.assertEqual("bar", dst_stat.metadata["x-goog-meta-foo"])
 
         with cloudstorage.open(TESTFILE) as f:
-            self.assertEqual(b'abcde', f.read())
+            self.assertEqual(b"abcde", f.read())
 
     def testDelete(self):
         self.assertRaises(errors.NotFoundError, cloudstorage.delete, TESTFILE)
@@ -244,30 +250,28 @@ class CloudStorageTest(unittest.TestCase):
         self.assertRaises(errors.NotFoundError, cloudstorage.stat, TESTFILE)
 
     def testGetLocation(self):
-        self.assertEquals('US', cloudstorage.get_location('/some-bucket'))
+        self.assertEquals("US", cloudstorage.get_location("/some-bucket"))
 
-        self.assertRaises(ValueError, cloudstorage.get_location, 'bad-format')
-        self.assertRaises(ValueError, cloudstorage.get_location, '/bad-format/obj')
+        self.assertRaises(ValueError, cloudstorage.get_location, "bad-format")
+        self.assertRaises(ValueError, cloudstorage.get_location, "/bad-format/obj")
 
     def testGetStorageClass(self):
-        self.assertEquals('STANDARD',
-                          cloudstorage.get_storage_class('/some-bucket'))
+        self.assertEquals("STANDARD", cloudstorage.get_storage_class("/some-bucket"))
 
-        self.assertRaises(ValueError, cloudstorage.get_storage_class, 'bad-format')
-        self.assertRaises(
-            ValueError, cloudstorage.get_storage_class, '/bad-format/obj')
+        self.assertRaises(ValueError, cloudstorage.get_storage_class, "bad-format")
+        self.assertRaises(ValueError, cloudstorage.get_storage_class, "/bad-format/obj")
 
     def testReadEntireFile(self):
-        f = cloudstorage.open(TESTFILE, 'w')
-        f.write(b'abcde')
+        f = cloudstorage.open(TESTFILE, "w")
+        f.write(b"abcde")
         f.close()
 
         f = cloudstorage.open(TESTFILE, read_buffer_size=1)
-        self.assertEqual(b'abcde', f.read())
+        self.assertEqual(b"abcde", f.read())
         f.close()
 
         f = cloudstorage.open(TESTFILE)
-        self.assertEqual(b'abcde', f.read(8))
+        self.assertEqual(b"abcde", f.read(8))
         f.close()
 
     def testReadNonexistFile(self):
@@ -278,307 +282,317 @@ class CloudStorageTest(unittest.TestCase):
         cloudstorage.set_default_retry_params(retry_params)
 
         retry_params.max_retries = 1000
-        with cloudstorage.open(TESTFILE, 'w') as f:
+        with cloudstorage.open(TESTFILE, "w") as f:
             self.assertEqual(0, f._api.retry_params.max_retries)
 
-        with cloudstorage.open(TESTFILE, 'w') as f:
+        with cloudstorage.open(TESTFILE, "w") as f:
             cloudstorage.set_default_retry_params(retry_params)
             self.assertEqual(0, f._api.retry_params.max_retries)
 
         per_call_retry_params = cloudstorage.RetryParams()
-        with cloudstorage.open(TESTFILE, 'w',
-                               retry_params=per_call_retry_params) as f:
+        with cloudstorage.open(TESTFILE, "w", retry_params=per_call_retry_params) as f:
             self.assertEqual(per_call_retry_params, f._api.retry_params)
 
     def testReadEmptyFile(self):
-        f = cloudstorage.open(TESTFILE, 'w')
-        f.write(b'')
+        f = cloudstorage.open(TESTFILE, "w")
+        f.write(b"")
         f.close()
 
         f = cloudstorage.open(TESTFILE)
-        self.assertEqual(b'', f.read())
-        self.assertEqual(b'', f.read())
+        self.assertEqual(b"", f.read())
+        self.assertEqual(b"", f.read())
         f.close()
 
     def testReadSmall(self):
-        f = cloudstorage.open(TESTFILE, 'w')
-        f.write(b'abcdefghij')
+        f = cloudstorage.open(TESTFILE, "w")
+        f.write(b"abcdefghij")
         f.close()
 
         f = cloudstorage.open(TESTFILE, read_buffer_size=3)
-        self.assertEqual(b'ab', f.read(2))
-        self.assertEqual(b'c', f.read(1))
-        self.assertEqual(b'de', f.read(2))
-        self.assertEqual(b'fghij', f.read())
+        self.assertEqual(b"ab", f.read(2))
+        self.assertEqual(b"c", f.read(1))
+        self.assertEqual(b"de", f.read(2))
+        self.assertEqual(b"fghij", f.read())
         f.close()
 
     def testReadIterator(self):
-        content = b'ab\n\ncd\nef\ng'
-        with cloudstorage.open(TESTFILE, 'w') as f:
+        content = b"ab\n\ncd\nef\ng"
+        with cloudstorage.open(TESTFILE, "w") as f:
             f.write(content)
 
         f = cloudstorage.open(TESTFILE)
         lines = [line for line in f]
-        self.assertEqual(content, b''.join(lines))
+        self.assertEqual(content, b"".join(lines))
 
         lines = [line for line in f]
         self.assertEqual([], lines)
 
         f.seek(0)
         lines = [line for line in f]
-        self.assertEqual(content, b''.join(lines))
+        self.assertEqual(content, b"".join(lines))
 
         with cloudstorage.open(TESTFILE) as f:
             lines = [line for line in f]
-            self.assertEqual(content, b''.join(lines))
+            self.assertEqual(content, b"".join(lines))
 
     def testWriteRead(self):
-        f = cloudstorage.open(TESTFILE, 'w')
-        f.write(b'a')
-        f.write(b'b'*1024)
-        f.write(b'c'*1024 + b'\n')
-        f.write(b'd'*1024*1024)
-        f.write(b'e'*1024*1024*10)
+        f = cloudstorage.open(TESTFILE, "w")
+        f.write(b"a")
+        f.write(b"b" * 1024)
+        f.write(b"c" * 1024 + b"\n")
+        f.write(b"d" * 1024 * 1024)
+        f.write(b"e" * 1024 * 1024 * 10)
         self.assertRaises(errors.NotFoundError, cloudstorage.stat, TESTFILE)
         f.close()
 
         f = cloudstorage.open(TESTFILE)
-        self.assertEqual(b'a' + b'b'*1024, f.read(1025))
-        self.assertEqual(b'c'*1024 + b'\n', f.readline())
-        self.assertEqual(b'd'*1024*1024, f.read(1024*1024))
-        self.assertEqual(b'e'*1024*1024*10, f.read())
-        self.assertEqual(b'', f.read())
-        self.assertEqual(b'', f.readline())
+        self.assertEqual(b"a" + b"b" * 1024, f.read(1025))
+        self.assertEqual(b"c" * 1024 + b"\n", f.readline())
+        self.assertEqual(b"d" * 1024 * 1024, f.read(1024 * 1024))
+        self.assertEqual(b"e" * 1024 * 1024 * 10, f.read())
+        self.assertEqual(b"", f.read())
+        self.assertEqual(b"", f.readline())
 
     def WriteInBlockSizeTest(self):
-        f = cloudstorage.open(TESTFILE, 'w')
-        f.write(b'a'*256*1024)
-        f.write(b'b'*256*1024)
+        f = cloudstorage.open(TESTFILE, "w")
+        f.write(b"a" * 256 * 1024)
+        f.write(b"b" * 256 * 1024)
         f.close()
 
         f = cloudstorage.open(TESTFILE)
-        self.assertEqual(b'a'*256*1024 + b'b'*256*1024, f.read())
-        self.assertEqual(b'', f.read())
-        self.assertEqual(b'', f.readline())
+        self.assertEqual(b"a" * 256 * 1024 + b"b" * 256 * 1024, f.read())
+        self.assertEqual(b"", f.read())
+        self.assertEqual(b"", f.readline())
         f.close()
 
     def testWriteReadWithContextManager(self):
-        with cloudstorage.open(TESTFILE, 'w') as f:
-            f.write(b'a')
-            f.write(b'b'*1024)
-            f.write(b'c'*1024 + b'\n')
-            f.write(b'd'*1024*1024)
-            f.write(b'e'*1024*1024*10)
+        with cloudstorage.open(TESTFILE, "w") as f:
+            f.write(b"a")
+            f.write(b"b" * 1024)
+            f.write(b"c" * 1024 + b"\n")
+            f.write(b"d" * 1024 * 1024)
+            f.write(b"e" * 1024 * 1024 * 10)
         self.assertTrue(f.closed)
 
         with cloudstorage.open(TESTFILE) as f:
-            self.assertEqual(b'a' + b'b'*1024, f.read(1025))
-            self.assertEqual(b'c'*1024 + b'\n', f.readline())
-            self.assertEqual(b'd'*1024*1024, f.read(1024*1024))
-            self.assertEqual(b'e'*1024*1024*10, f.read())
-            self.assertEqual(b'', f.read())
-            self.assertEqual(b'', f.readline())
+            self.assertEqual(b"a" + b"b" * 1024, f.read(1025))
+            self.assertEqual(b"c" * 1024 + b"\n", f.readline())
+            self.assertEqual(b"d" * 1024 * 1024, f.read(1024 * 1024))
+            self.assertEqual(b"e" * 1024 * 1024 * 10, f.read())
+            self.assertEqual(b"", f.read())
+            self.assertEqual(b"", f.readline())
         self.assertTrue(f.closed)
 
     def testSeekAndTell(self):
-        f = cloudstorage.open(TESTFILE, 'w')
-        f.write(b'abcdefghij')
+        f = cloudstorage.open(TESTFILE, "w")
+        f.write(b"abcdefghij")
         f.close()
 
         f = cloudstorage.open(TESTFILE)
         f.seek(5)
         self.assertEqual(5, f.tell())
-        self.assertEqual(b'f', f.read(1))
+        self.assertEqual(b"f", f.read(1))
         self.assertEqual(6, f.tell())
         f.seek(-1, os.SEEK_CUR)
-        self.assertEqual(b'f', f.read(1))
+        self.assertEqual(b"f", f.read(1))
         f.seek(-1, os.SEEK_END)
-        self.assertEqual(b'j', f.read(1))
+        self.assertEqual(b"j", f.read(1))
 
     def testStat(self):
         self.CreateFile(TESTFILE)
         filestat = cloudstorage.stat(TESTFILE)
-        content = b''.join(DEFAULT_CONTENT)
+        content = b"".join(DEFAULT_CONTENT)
         self.assertEqual(len(content), filestat.st_size)
-        self.assertEqual('text/plain', filestat.content_type)
-        self.assertEqual('foo', filestat.metadata['x-goog-meta-foo'])
-        self.assertEqual('bar', filestat.metadata['x-goog-meta-bar'])
-        self.assertEqual('public, max-age=6000', filestat.metadata['cache-control'])
+        self.assertEqual("text/plain", filestat.content_type)
+        self.assertEqual("foo", filestat.metadata["x-goog-meta-foo"])
+        self.assertEqual("bar", filestat.metadata["x-goog-meta-bar"])
+        self.assertEqual("public, max-age=6000", filestat.metadata["cache-control"])
         self.assertEqual(
-            'attachment; filename=f.txt',
-            filestat.metadata['content-disposition'])
+            "attachment; filename=f.txt", filestat.metadata["content-disposition"]
+        )
         self.assertEqual(TESTFILE, filestat.filename)
         self.assertEqual(hashlib.md5(content).hexdigest(), filestat.etag)
         self.assertTrue(math.floor(self.start_time) <= filestat.st_ctime)
         self.assertTrue(filestat.st_ctime <= time.time())
 
     def testDefaultContentType(self):
-        with cloudstorage.open(TESTFILE, 'w') as f:
-            f.write(b'foo')
+        with cloudstorage.open(TESTFILE, "w") as f:
+            f.write(b"foo")
         filestat = cloudstorage.stat(TESTFILE)
-        self.assertEqual(cloudstorage_stub._GCS_DEFAULT_CONTENT_TYPE,
-                        filestat.content_type)
+        self.assertEqual(
+            cloudstorage_stub._GCS_DEFAULT_CONTENT_TYPE, filestat.content_type
+        )
 
     def testListBucketCompatibility(self):
         """Test listbucket's old interface still works."""
-        bars = [BUCKET + '/test/bar' + str(i) for i in range(3)]
-        foos = [BUCKET + '/test/foo' + str(i) for i in range(3)]
+        bars = [BUCKET + "/test/bar" + str(i) for i in range(3)]
+        foos = [BUCKET + "/test/foo" + str(i) for i in range(3)]
         filenames = bars + foos
         for filename in filenames:
             self.CreateFile(filename)
 
-        bucket = cloudstorage.listbucket(BUCKET, prefix='test/', marker='test/foo')
+        bucket = cloudstorage.listbucket(BUCKET, prefix="test/", marker="test/foo")
         self.assertEqual(foos, [stat.filename for stat in bucket])
 
     def testListBucket(self):
-        bars = [BUCKET + '/test/bar' + str(i) for i in range(3)]
-        foos = [BUCKET + '/test/foo' + str(i) for i in range(3)]
+        bars = [BUCKET + "/test/bar" + str(i) for i in range(3)]
+        foos = [BUCKET + "/test/foo" + str(i) for i in range(3)]
         filenames = bars + foos
         for filename in filenames:
-          self.CreateFile(filename)
+            self.CreateFile(filename)
 
-        bucket = cloudstorage.listbucket(BUCKET + '/test/')
+        bucket = cloudstorage.listbucket(BUCKET + "/test/")
         self.assertEqual(filenames, [stat.filename for stat in bucket])
 
-        bucket = cloudstorage.listbucket(BUCKET + '/test/', max_keys=1)
+        bucket = cloudstorage.listbucket(BUCKET + "/test/", max_keys=1)
         stats = list(bucket)
         self.assertEqual(1, len(stats))
         stat = stats[0]
-        content = b''.join(DEFAULT_CONTENT)
+        content = b"".join(DEFAULT_CONTENT)
         self.assertEqual(filenames[0], stat.filename)
         self.assertEqual(len(content), stat.st_size)
         self.assertEqual(hashlib.md5(content).hexdigest(), stat.etag)
 
-        bucket = cloudstorage.listbucket(BUCKET + '/test/',
-                                        marker=BUCKET + '/test/foo0',
-                                        max_keys=1)
+        bucket = cloudstorage.listbucket(
+            BUCKET + "/test/", marker=BUCKET + "/test/foo0", max_keys=1
+        )
         stats = [stat for stat in bucket]
         self.assertEqual(1, len(stats))
         stat = stats[0]
         self.assertEqual(foos[1], stat.filename)
 
     def testListBucketWithDelimiter(self):
-      filenames = ['/bar',
-                  '/foo0', '/foo1',
-                  '/foo/a', '/foo/b/bb', '/foo/b/bbb', '/foo/c/c',
-                  '/foo1/a',
-                  '/foo2/a', '/foo2/b',
-                  '/foo3/a']
-      def FullyQualify(n):
-        return BUCKET + n
-      fullnames = [FullyQualify(n) for n in filenames]
-      for n in fullnames:
-        self.CreateFile(n)
+        filenames = [
+            "/bar",
+            "/foo0",
+            "/foo1",
+            "/foo/a",
+            "/foo/b/bb",
+            "/foo/b/bbb",
+            "/foo/c/c",
+            "/foo1/a",
+            "/foo2/a",
+            "/foo2/b",
+            "/foo3/a",
+        ]
 
-      bucket = cloudstorage.listbucket(BUCKET + '/foo',
-                                      delimiter='/',
-                                      max_keys=5)
-      expected = [FullyQualify(n) for n in ['/foo/', '/foo0', '/foo1',
-                                            '/foo1/', '/foo2/']]
-      self.assertEqual(expected, [stat.filename for stat in bucket])
+        def FullyQualify(n):
+            return BUCKET + n
 
-      bucket = cloudstorage.listbucket(BUCKET + '/foo/',
-                                      delimiter='/',
-                                      max_keys=2)
-      expected = [FullyQualify(n) for n in ['/foo/a', '/foo/b/']]
-      self.assertEqual(expected, [stat.filename for stat in bucket])
+        fullnames = [FullyQualify(n) for n in filenames]
+        for n in fullnames:
+            self.CreateFile(n)
+
+        bucket = cloudstorage.listbucket(BUCKET + "/foo", delimiter="/", max_keys=5)
+        expected = [
+            FullyQualify(n) for n in ["/foo/", "/foo0", "/foo1", "/foo1/", "/foo2/"]
+        ]
+        self.assertEqual(expected, [stat.filename for stat in bucket])
+
+        bucket = cloudstorage.listbucket(BUCKET + "/foo/", delimiter="/", max_keys=2)
+        expected = [FullyQualify(n) for n in ["/foo/a", "/foo/b/"]]
+        self.assertEqual(expected, [stat.filename for stat in bucket])
 
     def testListBucketPickle(self):
-      bars = [BUCKET + '/test/bar' + str(i) for i in range(3)]
-      foos = [BUCKET + '/test/foo' + str(i) for i in range(3)]
-      filenames = bars + foos
-      for filename in filenames:
-        self.CreateFile(filename)
+        bars = [BUCKET + "/test/bar" + str(i) for i in range(3)]
+        foos = [BUCKET + "/test/foo" + str(i) for i in range(3)]
+        filenames = bars + foos
+        for filename in filenames:
+            self.CreateFile(filename)
 
-      bucket = cloudstorage.listbucket(BUCKET + '/test/')
-      self.AssertListBucketEqual(filenames, bucket)
+        bucket = cloudstorage.listbucket(BUCKET + "/test/")
+        self.AssertListBucketEqual(filenames, bucket)
 
-      bucket = cloudstorage.listbucket(BUCKET + '/test/', max_keys=2)
-      self.AssertListBucketEqual(bars[:2], bucket)
+        bucket = cloudstorage.listbucket(BUCKET + "/test/", max_keys=2)
+        self.AssertListBucketEqual(bars[:2], bucket)
 
-      bucket = cloudstorage.listbucket(BUCKET + '/test/',
-                                      marker=BUCKET + '/test/bar2',
-                                      max_keys=2)
-      self.AssertListBucketEqual(foos[:2], bucket)
+        bucket = cloudstorage.listbucket(
+            BUCKET + "/test/", marker=BUCKET + "/test/bar2", max_keys=2
+        )
+        self.AssertListBucketEqual(foos[:2], bucket)
 
     def AssertListBucketEqual(self, expected, bucket):
-      result = []
-      while True:
-        try:
-          result.append(next(iter(bucket)).filename)
-          bucket = pickle.loads(pickle.dumps(bucket))
-        except StopIteration:
-          break
-      self.assertEqual(expected, result)
+        result = []
+        while True:
+            try:
+                result.append(next(iter(bucket)).filename)
+                bucket = pickle.loads(pickle.dumps(bucket))
+            except StopIteration:
+                break
+        self.assertEqual(expected, result)
 
 
 class CloudStorageComposeTest(unittest.TestCase):
-  """Test for Cloudstorage compose method."""
+    """Test for Cloudstorage compose method."""
 
-  def setUp(self):
-    """Setup for Cloudstorage testing."""
-    self.testbed = testbed.Testbed()
-    self.testbed.activate()
-    self.testbed.init_app_identity_stub()
-    self.testbed.init_blobstore_stub()
-    self.testbed.init_datastore_v3_stub()
-    self.testbed.init_memcache_stub()
-    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
-    self._old_max_keys = common._MAX_GET_BUCKET_RESULT
-    common._MAX_GET_BUCKET_RESULT = 2
-    self.start_time = time.time()
-    cloudstorage.set_default_retry_params(None)
-    with cloudstorage.open(TESTFILE, 'w') as gcs:
-      gcs.write(DEFAULT_COMPOSE_CONTENT)
+    def setUp(self):
+        """Setup for Cloudstorage testing."""
+        self.testbed = testbed.Testbed()
+        self.testbed.activate()
+        self.testbed.init_app_identity_stub()
+        self.testbed.init_blobstore_stub()
+        self.testbed.init_datastore_v3_stub()
+        self.testbed.init_memcache_stub()
+        self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
+        self._old_max_keys = common._MAX_GET_BUCKET_RESULT
+        common._MAX_GET_BUCKET_RESULT = 2
+        self.start_time = time.time()
+        cloudstorage.set_default_retry_params(None)
+        with cloudstorage.open(TESTFILE, "w") as gcs:
+            gcs.write(DEFAULT_COMPOSE_CONTENT)
 
-  def tearDown(self):
-    """Tear down for Cloudstorage testing."""
-    common._MAX_GET_BUCKET_RESULT = self._old_max_keys
-    cloudstorage.delete(TESTFILE)
-    self.testbed.deactivate()
+    def tearDown(self):
+        """Tear down for Cloudstorage testing."""
+        common._MAX_GET_BUCKET_RESULT = self._old_max_keys
+        cloudstorage.delete(TESTFILE)
+        self.testbed.deactivate()
 
-  def testComposeStringForFileList(self):
-    """Test to ensure TypeError is thrown if a string is sent."""
-    self.assertRaises(TypeError, cloudstorage.compose, TESTFILE, DESTFILE)
+    def testComposeStringForFileList(self):
+        """Test to ensure TypeError is thrown if a string is sent."""
+        self.assertRaises(TypeError, cloudstorage.compose, TESTFILE, DESTFILE)
 
-  def testComposeNoneIterableForFileList(self):
-    """Test to ensure TypeError is thrown if a non iterable is sent."""
-    self.assertRaises(TypeError, cloudstorage.compose, 1, DESTFILE)
+    def testComposeNoneIterableForFileList(self):
+        """Test to ensure TypeError is thrown if a non iterable is sent."""
+        self.assertRaises(TypeError, cloudstorage.compose, 1, DESTFILE)
 
-  def testComposeTooManyFilesFailure(self):
-    """Test to ensure ValueError is thrown if more than 32 files are sent."""
-    self.assertRaises(ValueError, cloudstorage.compose,
-                      [TESTFILE] * 33, DESTFILE)
+    def testComposeTooManyFilesFailure(self):
+        """Test to ensure ValueError is thrown if more than 32 files are sent."""
+        self.assertRaises(ValueError, cloudstorage.compose, [TESTFILE] * 33, DESTFILE)
 
-  def testComposeNoFilesFailure(self):
-    """Test to ensure ValueError is thrown if zero paths are sent."""
-    self.assertRaises(ValueError, cloudstorage.compose, [], DESTFILE)
+    def testComposeNoFilesFailure(self):
+        """Test to ensure ValueError is thrown if zero paths are sent."""
+        self.assertRaises(ValueError, cloudstorage.compose, [], DESTFILE)
 
-  def testComposeOne(self):
-    """Test to ensure one file can be composed (the API supports it)."""
+    def testComposeOne(self):
+        """Test to ensure one file can be composed (the API supports it)."""
 
-    test_file = TESTFILE[len(BUCKET) + 1:]
-    cloudstorage.compose([test_file], DESTFILE)
-    with cloudstorage.open(DESTFILE, 'r') as gcs:
-      results = gcs.read()
-    cloudstorage.delete(DESTFILE)
-    self.assertEqual(DEFAULT_COMPOSE_CONTENT, results)
+        test_file = TESTFILE[len(BUCKET) + 1 :]
+        cloudstorage.compose([test_file], DESTFILE)
+        with cloudstorage.open(DESTFILE, "r") as gcs:
+            results = gcs.read()
+        cloudstorage.delete(DESTFILE)
+        self.assertEqual(DEFAULT_COMPOSE_CONTENT, results)
 
-  def testComposeFilesMetadataTooLargeFailure(self):
-    """Test to ensure ValueError is thrown if metadata is too long."""
-    self.assertRaises(ValueError, cloudstorage.compose, [TESTFILE] * 2,
-                      DESTFILE, files_metadata=['a'] * 3)
+    def testComposeFilesMetadataTooLargeFailure(self):
+        """Test to ensure ValueError is thrown if metadata is too long."""
+        self.assertRaises(
+            ValueError,
+            cloudstorage.compose,
+            [TESTFILE] * 2,
+            DESTFILE,
+            files_metadata=["a"] * 3,
+        )
 
-  def testComposeInvalidItemInFileListFailure(self):
-    """Test to ensure ValueError is thrown if there are invalid entries."""
-    self.assertRaises(TypeError, cloudstorage.compose, ['1', 1], DESTFILE)
+    def testComposeInvalidItemInFileListFailure(self):
+        """Test to ensure ValueError is thrown if there are invalid entries."""
+        self.assertRaises(TypeError, cloudstorage.compose, ["1", 1], DESTFILE)
 
-  def testCompose32Files(self):
-    """Test to 32 files are composed properly."""
-    test_file = TESTFILE[len(BUCKET) + 1:]
-    cloudstorage.compose([test_file] * 32, DESTFILE, content_type='text/plain')
+    def testCompose32Files(self):
+        """Test to 32 files are composed properly."""
+        test_file = TESTFILE[len(BUCKET) + 1 :]
+        cloudstorage.compose([test_file] * 32, DESTFILE, content_type="text/plain")
 
-    with cloudstorage.open(DESTFILE, 'r') as gcs:
-      results = gcs.read()
-    cloudstorage.delete(DESTFILE)
-    self.assertEqual(b''.join([DEFAULT_COMPOSE_CONTENT] * 32), results)
+        with cloudstorage.open(DESTFILE, "r") as gcs:
+            results = gcs.read()
+        cloudstorage.delete(DESTFILE)
+        self.assertEqual(b"".join([DEFAULT_COMPOSE_CONTENT] * 32), results)

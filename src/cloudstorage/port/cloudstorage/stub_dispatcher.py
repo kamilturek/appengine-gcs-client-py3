@@ -264,7 +264,6 @@ def _handle_get(gcs_stub, filename, param_dict, headers):
                           'content-type': 'application/xml'}
       return _FakeUrlFetchResult(six.moves.http_client.OK, response_headers, body)
     else:
-
       return _handle_get_bucket(gcs_stub, mo.group(1), param_dict)
   else:
 
@@ -319,7 +318,7 @@ def _handle_get_bucket(gcs_stub, bucketpath, param_dict):
       builder.end('LastModified')
 
       builder.start('ETag', {})
-      builder.data(stat.etag)
+      builder.data(stat.etag.decode('utf-8'))
       builder.end('ETag')
 
       builder.start('Size', {})

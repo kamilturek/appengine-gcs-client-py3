@@ -2,8 +2,6 @@
 
 """Tests for cloudstorage_api.py."""
 
-from __future__ import absolute_import, with_statement
-
 import gzip
 import hashlib
 import math
@@ -13,7 +11,6 @@ import time
 import unittest
 
 from google.appengine.ext import testbed
-from six.moves import range
 
 import cloudstorage
 from cloudstorage import cloudstorage_api, common, errors, storage_api

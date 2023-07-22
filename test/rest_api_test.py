@@ -1,12 +1,8 @@
 # Copyright 2012 Google Inc. All Rights Reserved.
 
-
-
-
-from __future__ import absolute_import
-
 import pickle
 import unittest
+from unittest import mock
 
 import mock
 import six
@@ -14,10 +10,7 @@ import six.moves.http_client
 from google.appengine.api import app_identity, memcache, urlfetch
 from google.appengine.ext import ndb, testbed
 
-try:
-  from cloudstorage import api_utils, rest_api, test_utils
-except ImportError:
-  from google.appengine.ext.cloudstorage import api_utils, rest_api, test_utils
+from cloudstorage import api_utils, rest_api, test_utils
 
 
 class RestApiTest(unittest.TestCase):
@@ -207,11 +200,9 @@ class RestApiTest(unittest.TestCase):
 
     fut = ndb.Future()
     fut.set_result(test_utils.MockUrlFetchResult(200, {}, 'response'))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        return_value=fut)
 
-    res = api.urlfetch('http://example.com', method='PUT', headers={'a': 'b'})
+    with mock.patch.object(ndb.Context, 'urlfetch', return_value=fut, autospec=True):
+      res = api.urlfetch('http://example.com', method='PUT', headers={'a': 'b'})
 
     self.assertEqual(res.status_code, 200)
     self.assertEqual(res.content, 'response')
@@ -234,10 +225,8 @@ class RestApiTest(unittest.TestCase):
     fut_urlfetch = ndb.Future()
     fut_urlfetch.set_result(
         test_utils.MockUrlFetchResult(200, {'foo': 'bar'}, 'yoohoo'))
-    pickled_api.urlfetch_async = mock.create_autospec(
-        pickled_api.urlfetch_async, return_value=fut_urlfetch)
-
-    res = pickled_api.do_request('http://example.com')
+    with mock.patch.object(pickled_api, 'urlfetch_async', return_value=fut_urlfetch, autospec=True):
+      res = pickled_api.do_request('http://example.com')
     self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
 
   def testUrlFetchCalledWithUserProvidedDeadline(self):
@@ -249,15 +238,13 @@ class RestApiTest(unittest.TestCase):
     resp_fut2 = ndb.Future()
     resp_fut2.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                        None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut1, resp_fut2])
 
-    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(
-        90, ndb.Context.urlfetch.call_args_list[0][1]['deadline'])
-    self.assertEqual(
-        90, ndb.Context.urlfetch.call_args_list[1][1]['deadline'])
+    with mock.patch.object(ndb.Context, 'urlfetch', side_effect=[resp_fut1, resp_fut2], autospec=True):
+      self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(
+          90, ndb.Context.urlfetch.call_args_list[0][1]['deadline'])
+      self.assertEqual(
+          90, ndb.Context.urlfetch.call_args_list[1][1]['deadline'])
 
   def testRetryAfterDoRequestUrlFetchTimeout(self):
     api = rest_api._RestApi('scope')
@@ -267,12 +254,10 @@ class RestApiTest(unittest.TestCase):
     resp_fut2 = ndb.Future()
     resp_fut2.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                        None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut1, resp_fut2])
 
-    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(2, ndb.Context.urlfetch.call_count)
+    with mock.patch.object(ndb.Context, 'urlfetch', side_effect=[resp_fut1, resp_fut2], autospec=True):
+      self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(2, ndb.Context.urlfetch.call_count)
 
   def testRetryAfterDoRequestResponseTimeout(self):
     api = rest_api._RestApi('scope')
@@ -283,12 +268,10 @@ class RestApiTest(unittest.TestCase):
     resp_fut2 = ndb.Future()
     resp_fut2.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                        None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut1, resp_fut2])
 
-    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(2, ndb.Context.urlfetch.call_count)
+    with mock.patch.object(ndb.Context, 'urlfetch', side_effect=[resp_fut1, resp_fut2], autospec=True):
+        self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
+        self.assertEqual(2, ndb.Context.urlfetch.call_count)
 
   def testRetryAfterAppIdentityError(self):
     api = rest_api._RestApi('scope')
@@ -304,16 +287,10 @@ class RestApiTest(unittest.TestCase):
     resp_fut = ndb.Future()
     resp_fut.set_result(test_utils.MockUrlFetchResult(six.moves.http_client.ACCEPTED,
                                                       None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut])
 
-    self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(
-        'OAuth token1',
-        ndb.Context.urlfetch.call_args[1]['headers']['authorization'])
-    self.assertEqual(3, api.get_token_async.call_count)
-
-
-if __name__ == '__main__':
-  unittest.main()
+    with mock.patch.object(ndb.Context, 'urlfetch', side_effect=[resp_fut], autospec=True):
+      self.assertEqual(six.moves.http_client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(
+          'OAuth token1',
+          ndb.Context.urlfetch.call_args[1]['headers']['authorization'])
+      self.assertEqual(3, api.get_token_async.call_count)

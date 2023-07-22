@@ -9,6 +9,7 @@ from google.appengine.api import app_identity, memcache, urlfetch
 from google.appengine.ext import ndb, testbed
 
 from cloudstorage import api_utils, rest_api, test_utils
+from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
 
 
 class RestApiTest(unittest.TestCase):
@@ -19,7 +20,7 @@ class RestApiTest(unittest.TestCase):
         self.testbed.init_app_identity_stub()
         self.testbed.init_datastore_v3_stub()
         self.testbed.init_memcache_stub()
-        self.testbed.init_urlfetch_stub()
+        self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
         api_utils._thread_local_settings.retry_params = None
 
     def tearDown(self):

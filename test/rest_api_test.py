@@ -24,6 +24,8 @@ class RestApiTest(unittest.TestCase):
         api_utils._thread_local_settings.retry_params = None
 
     def tearDown(self):
+        memcache.flush_all()
+        ndb.get_context().clear_cache()
         self.testbed.deactivate()
         super(RestApiTest, self).tearDown()
 
@@ -41,24 +43,27 @@ class RestApiTest(unittest.TestCase):
         fut_urlfetch.set_result(
             test_utils.MockUrlFetchResult(200, {"foo": "bar"}, "yoohoo")
         )
-        ctx_urlfetch = mock.Mock(return_value=fut_urlfetch)
-        ndb.get_context().urlfetch = ctx_urlfetch
+        with mock.patch.object(
+            ndb.get_context(),
+            "urlfetch",
+            return_value=fut_urlfetch,
+            autospec=True,
+        ) as ctx_urlfetch:
+            res = api.do_request("http://example.com")
 
-        res = api.do_request("http://example.com")
-
-        self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
-        ctx_urlfetch.assert_called_once_with(
-            "http://example.com",
-            headers={
-                "authorization": "OAuth blah",
-                "User-Agent": "AppEngine-Python-GCS",
-            },
-            follow_redirects=False,
-            payload=None,
-            method="GET",
-            deadline=None,
-            callback=None,
-        )
+            self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
+            ctx_urlfetch.assert_called_once_with(
+                "http://example.com",
+                headers={
+                    "authorization": "OAuth blah",
+                    "User-Agent": "AppEngine-Python-GCS",
+                },
+                follow_redirects=False,
+                payload=None,
+                method="GET",
+                deadline=None,
+                callback=None,
+            )
 
     def testBasicCallWithUserAgent(self):
         user_agent = "Test User Agent String"
@@ -76,21 +81,24 @@ class RestApiTest(unittest.TestCase):
         fut_urlfetch.set_result(
             test_utils.MockUrlFetchResult(200, {"foo": "bar"}, "yoohoo")
         )
-        ctx_urlfetch = mock.Mock(return_value=fut_urlfetch)
-        ndb.get_context().urlfetch = ctx_urlfetch
+        with mock.patch.object(
+            ndb.get_context(),
+            "urlfetch",
+            return_value=fut_urlfetch,
+            autospec=True,
+        ) as ctx_urlfetch:
+            res = api.do_request("http://example.com")
 
-        res = api.do_request("http://example.com")
-
-        self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
-        ctx_urlfetch.assert_called_once_with(
-            "http://example.com",
-            headers={"authorization": "OAuth blah", "User-Agent": user_agent},
-            follow_redirects=False,
-            payload=None,
-            method="GET",
-            deadline=None,
-            callback=None,
-        )
+            self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
+            ctx_urlfetch.assert_called_once_with(
+                "http://example.com",
+                headers={"authorization": "OAuth blah", "User-Agent": user_agent},
+                follow_redirects=False,
+                payload=None,
+                method="GET",
+                deadline=None,
+                callback=None,
+            )
 
     def testNoToken(self):
         api = rest_api._RestApi("scope")
@@ -106,21 +114,25 @@ class RestApiTest(unittest.TestCase):
         fut_urlfetch.set_result(
             test_utils.MockUrlFetchResult(200, {"foo": "bar"}, "yoohoo")
         )
-        ctx_urlfetch = mock.Mock(return_value=fut_urlfetch)
-        ndb.get_context().urlfetch = ctx_urlfetch
 
-        res = api.do_request("http://example.com")
+        with mock.patch.object(
+            ndb.get_context(),
+            "urlfetch",
+            return_value=fut_urlfetch,
+            autospec=True,
+        ) as ctx_urlfetch:
+            res = api.do_request("http://example.com")
 
-        self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
-        ctx_urlfetch.assert_called_once_with(
-            "http://example.com",
-            headers={"User-Agent": "AppEngine-Python-GCS"},
-            follow_redirects=False,
-            payload=None,
-            method="GET",
-            deadline=None,
-            callback=None,
-        )
+            self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
+            ctx_urlfetch.assert_called_once_with(
+                "http://example.com",
+                headers={"User-Agent": "AppEngine-Python-GCS"},
+                follow_redirects=False,
+                payload=None,
+                method="GET",
+                deadline=None,
+                callback=None,
+            )
 
     def testMultipleScopes(self):
         api = rest_api._RestApi(["scope1", "scope2"])
@@ -133,7 +145,8 @@ class RestApiTest(unittest.TestCase):
         fut2 = ndb.Future()
         fut2.set_result(("token2", 0))
         api.make_token_async = mock.create_autospec(
-            api.make_token_async, side_effect=[fut1, fut2]
+            api.make_token_async,
+            side_effect=[fut1, fut2],
         )
         token1 = api.get_token()
         token2 = api.get_token()
@@ -181,9 +194,6 @@ class RestApiTest(unittest.TestCase):
         t2 = api.get_token()
         self.assertEqual(t2, t1)
 
-        memcache.flush_all()
-        ndb.get_context().clear_cache()
-
         api = rest_api._RestApi("scope", retry_params=retry_params)
         t3 = api.get_token()
         self.assertEqual(t3, t1)
@@ -211,7 +221,10 @@ class RestApiTest(unittest.TestCase):
         fut.set_result(test_utils.MockUrlFetchResult(200, {}, "response"))
 
         with mock.patch.object(
-            ndb.Context, "urlfetch", return_value=fut, autospec=True
+            ndb.get_context(),
+            "urlfetch",
+            return_value=fut,
+            autospec=True,
         ):
             res = api.urlfetch("http://example.com", method="PUT", headers={"a": "b"})
 
@@ -240,7 +253,10 @@ class RestApiTest(unittest.TestCase):
             test_utils.MockUrlFetchResult(200, {"foo": "bar"}, "yoohoo")
         )
         with mock.patch.object(
-            pickled_api, "urlfetch_async", return_value=fut_urlfetch, autospec=True
+            pickled_api,
+            "urlfetch_async",
+            return_value=fut_urlfetch,
+            autospec=True,
         ):
             res = pickled_api.do_request("http://example.com")
         self.assertEqual(res, (200, {"foo": "bar"}, "yoohoo"))
@@ -257,11 +273,18 @@ class RestApiTest(unittest.TestCase):
         )
 
         with mock.patch.object(
-            ndb.Context, "urlfetch", side_effect=[resp_fut1, resp_fut2], autospec=True
+            ndb.get_context(),
+            "urlfetch",
+            side_effect=[resp_fut1, resp_fut2],
+            autospec=True,
         ):
             self.assertEqual(http.client.ACCEPTED, api.do_request("foo")[0])
-            self.assertEqual(90, ndb.Context.urlfetch.call_args_list[0][1]["deadline"])
-            self.assertEqual(90, ndb.Context.urlfetch.call_args_list[1][1]["deadline"])
+            self.assertEqual(
+                90, ndb.get_context().urlfetch.call_args_list[0][1]["deadline"]
+            )
+            self.assertEqual(
+                90, ndb.get_context().urlfetch.call_args_list[1][1]["deadline"]
+            )
 
     def testRetryAfterDoRequestUrlFetchTimeout(self):
         api = rest_api._RestApi("scope")
@@ -274,19 +297,20 @@ class RestApiTest(unittest.TestCase):
         )
 
         with mock.patch.object(
-            ndb.Context, "urlfetch", side_effect=[resp_fut1, resp_fut2], autospec=True
+            ndb.get_context(),
+            "urlfetch",
+            side_effect=[resp_fut1, resp_fut2],
+            autospec=True,
         ):
             self.assertEqual(http.client.ACCEPTED, api.do_request("foo")[0])
-            self.assertEqual(2, ndb.Context.urlfetch.call_count)
+            self.assertEqual(2, ndb.get_context().urlfetch.call_count)
 
     def testRetryAfterDoRequestResponseTimeout(self):
         api = rest_api._RestApi("scope")
 
         resp_fut1 = ndb.Future()
         resp_fut1.set_result(
-            test_utils.MockUrlFetchResult(
-                http.client.REQUEST_TIMEOUT, None, None
-            )
+            test_utils.MockUrlFetchResult(http.client.REQUEST_TIMEOUT, None, None)
         )
         resp_fut2 = ndb.Future()
         resp_fut2.set_result(
@@ -294,10 +318,13 @@ class RestApiTest(unittest.TestCase):
         )
 
         with mock.patch.object(
-            ndb.Context, "urlfetch", side_effect=[resp_fut1, resp_fut2], autospec=True
+            ndb.get_context(),
+            "urlfetch",
+            side_effect=[resp_fut1, resp_fut2],
+            autospec=True,
         ):
             self.assertEqual(http.client.ACCEPTED, api.do_request("foo")[0])
-            self.assertEqual(2, ndb.Context.urlfetch.call_count)
+            self.assertEqual(2, ndb.get_context().urlfetch.call_count)
 
     def testRetryAfterAppIdentityError(self):
         api = rest_api._RestApi("scope")
@@ -319,11 +346,14 @@ class RestApiTest(unittest.TestCase):
         )
 
         with mock.patch.object(
-            ndb.Context, "urlfetch", side_effect=[resp_fut], autospec=True
+            ndb.get_context(),
+            "urlfetch",
+            side_effect=[resp_fut],
+            autospec=True,
         ):
             self.assertEqual(http.client.ACCEPTED, api.do_request("foo")[0])
             self.assertEqual(
                 "OAuth token1",
-                ndb.Context.urlfetch.call_args[1]["headers"]["authorization"],
+                ndb.get_context().urlfetch.call_args[1]["headers"]["authorization"],
             )
             self.assertEqual(3, api.get_token_async.call_count)

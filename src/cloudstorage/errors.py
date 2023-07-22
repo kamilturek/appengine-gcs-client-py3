@@ -15,131 +15,135 @@
 """Google Cloud Storage specific Files API calls."""
 
 
-
-
-
 from __future__ import absolute_import
 
-__all__ = ['AuthorizationError',
-           'check_status',
-           'Error',
-           'FatalError',
-           'FileClosedError',
-           'ForbiddenError',
-           'InvalidRange',
-           'NotFoundError',
-           'ServerError',
-           'TimeoutError',
-           'TransientError',
-          ]
+__all__ = [
+    "AuthorizationError",
+    "check_status",
+    "Error",
+    "FatalError",
+    "FileClosedError",
+    "ForbiddenError",
+    "InvalidRange",
+    "NotFoundError",
+    "ServerError",
+    "TimeoutError",
+    "TransientError",
+]
 
 import six.moves.http_client
 
 
 class Error(Exception):
-  """Base error for all gcs operations.
+    """Base error for all gcs operations.
 
-  Error can happen on GAE side or GCS server side.
-  For details on a particular GCS HTTP response code, see
-  https://developers.google.com/storage/docs/reference-status#standardcodes
-  """
+    Error can happen on GAE side or GCS server side.
+    For details on a particular GCS HTTP response code, see
+    https://developers.google.com/storage/docs/reference-status#standardcodes
+    """
 
 
 class TransientError(Error):
-  """TransientError could be retried."""
+    """TransientError could be retried."""
 
 
 class TimeoutError(TransientError):
-  """HTTP 408 timeout."""
+    """HTTP 408 timeout."""
 
 
 class FatalError(Error):
-  """FatalError shouldn't be retried."""
+    """FatalError shouldn't be retried."""
 
 
 class FileClosedError(FatalError):
-  """File is already closed.
+    """File is already closed.
 
-  This can happen when the upload has finished but 'write' is called on
-  a stale upload handle.
-  """
+    This can happen when the upload has finished but 'write' is called on
+    a stale upload handle.
+    """
 
 
 class NotFoundError(FatalError):
-  """HTTP 404 resource not found."""
+    """HTTP 404 resource not found."""
 
 
 class ForbiddenError(FatalError):
-  """HTTP 403 Forbidden.
+    """HTTP 403 Forbidden.
 
-  While GCS replies with a 403 error for many reasons, the most common one
-  is due to bucket permission not correctly setup for your app to access.
-  """
+    While GCS replies with a 403 error for many reasons, the most common one
+    is due to bucket permission not correctly setup for your app to access.
+    """
 
 
 class AuthorizationError(FatalError):
-  """HTTP 401 authentication required.
+    """HTTP 401 authentication required.
 
-  Unauthorized request has been received by GCS.
+    Unauthorized request has been received by GCS.
 
-  This error is mostly handled by GCS client. GCS client will request
-  a new access token and retry the request.
-  """
+    This error is mostly handled by GCS client. GCS client will request
+    a new access token and retry the request.
+    """
 
 
 class InvalidRange(FatalError):
-  """HTTP 416 RequestRangeNotSatifiable."""
+    """HTTP 416 RequestRangeNotSatifiable."""
 
 
 class ServerError(TransientError):
-  """HTTP >= 500 server side error."""
+    """HTTP >= 500 server side error."""
 
 
-def check_status(status, expected, path, headers=None,
-                 resp_headers=None, body=None, extras=None):
-  """Check HTTP response status is expected.
+def check_status(
+    status, expected, path, headers=None, resp_headers=None, body=None, extras=None
+):
+    """Check HTTP response status is expected.
 
-  Args:
-    status: HTTP response status. int.
-    expected: a list of expected statuses. A list of ints.
-    path: filename or a path prefix.
-    headers: HTTP request headers.
-    resp_headers: HTTP response headers.
-    body: HTTP response body.
-    extras: extra info to be logged verbatim if error occurs.
+    Args:
+      status: HTTP response status. int.
+      expected: a list of expected statuses. A list of ints.
+      path: filename or a path prefix.
+      headers: HTTP request headers.
+      resp_headers: HTTP response headers.
+      body: HTTP response body.
+      extras: extra info to be logged verbatim if error occurs.
 
-  Raises:
-    AuthorizationError: if authorization failed.
-    NotFoundError: if an object that's expected to exist doesn't.
-    TimeoutError: if HTTP request timed out.
-    ServerError: if server experienced some errors.
-    FatalError: if any other unexpected errors occurred.
-  """
-  if status in expected:
-    return
+    Raises:
+      AuthorizationError: if authorization failed.
+      NotFoundError: if an object that's expected to exist doesn't.
+      TimeoutError: if HTTP request timed out.
+      ServerError: if server experienced some errors.
+      FatalError: if any other unexpected errors occurred.
+    """
+    if status in expected:
+        return
 
-  msg = ('Expect status %r from Google Storage. But got status %d.\n'
-         'Path: %r.\n'
-         'Request headers: %r.\n'
-         'Response headers: %r.\n'
-         'Body: %r.\n'
-         'Extra info: %r.\n' %
-         (expected, status, path, headers, resp_headers, body, extras))
+    msg = (
+        "Expect status %r from Google Storage. But got status %d.\n"
+        "Path: %r.\n"
+        "Request headers: %r.\n"
+        "Response headers: %r.\n"
+        "Body: %r.\n"
+        "Extra info: %r.\n"
+        % (expected, status, path, headers, resp_headers, body, extras)
+    )
 
-  if status == six.moves.http_client.UNAUTHORIZED:
-    raise AuthorizationError(msg)
-  elif status == six.moves.http_client.FORBIDDEN:
-    raise ForbiddenError(msg)
-  elif status == six.moves.http_client.NOT_FOUND:
-    raise NotFoundError(msg)
-  elif status == six.moves.http_client.REQUEST_TIMEOUT:
-    raise TimeoutError(msg)
-  elif status == six.moves.http_client.REQUESTED_RANGE_NOT_SATISFIABLE:
-    raise InvalidRange(msg)
-  elif (status == six.moves.http_client.OK and 308 in expected and
-        six.moves.http_client.OK not in expected):
-    raise FileClosedError(msg)
-  elif status >= 500:
-    raise ServerError(msg)
-  else:
-    raise FatalError(msg)
+    if status == six.moves.http_client.UNAUTHORIZED:
+        raise AuthorizationError(msg)
+    elif status == six.moves.http_client.FORBIDDEN:
+        raise ForbiddenError(msg)
+    elif status == six.moves.http_client.NOT_FOUND:
+        raise NotFoundError(msg)
+    elif status == six.moves.http_client.REQUEST_TIMEOUT:
+        raise TimeoutError(msg)
+    elif status == six.moves.http_client.REQUESTED_RANGE_NOT_SATISFIABLE:
+        raise InvalidRange(msg)
+    elif (
+        status == six.moves.http_client.OK
+        and 308 in expected
+        and six.moves.http_client.OK not in expected
+    ):
+        raise FileClosedError(msg)
+    elif status >= 500:
+        raise ServerError(msg)
+    else:
+        raise FatalError(msg)

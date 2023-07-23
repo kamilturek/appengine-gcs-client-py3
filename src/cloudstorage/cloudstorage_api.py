@@ -30,13 +30,13 @@ __all__ = ['copy2',
            'get_storage_class',
           ]
 
+import io
 import logging
 import urllib
 import os
 import itertools
 import types
 import xml.etree.cElementTree as ET
-from io import BytesIO
 
 from . import api_utils
 from . import common
@@ -664,7 +664,7 @@ class _Bucket(object):
       A dict from element tag to element value.
     """
     element_mapping = {}
-    result = BytesIO(result)
+    result = io.BytesIO(result)
     for _, e in ET.iterparse(result, events=('end',)):
       if not elements:
         break

@@ -16,6 +16,7 @@ from google.appengine.ext import testbed
 
 try:
   from cloudstorage import api_utils
+  from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
   from google.appengine.api import app_identity
   from google.appengine.api import urlfetch
   from google.appengine.api import urlfetch_errors
@@ -37,6 +38,7 @@ class EagerTaskletTest(unittest.TestCase):
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_all_stubs()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     self.urlfetch_called = False
     hooks = apiproxy_stub_map.apiproxy.GetPreCallHooks()
     hooks.Append('key', self.UrlfetchPreCallHook, 'urlfetch')

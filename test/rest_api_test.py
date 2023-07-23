@@ -18,6 +18,7 @@ try:
   from cloudstorage import api_utils
   from cloudstorage import rest_api
   from cloudstorage import test_utils
+  from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
 except ImportError:
   from google.appengine.ext.cloudstorage import api_utils
   from google.appengine.ext.cloudstorage import rest_api
@@ -33,7 +34,7 @@ class RestApiTest(unittest.TestCase):
     self.testbed.init_app_identity_stub()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
-    self.testbed.init_urlfetch_stub()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     api_utils._thread_local_settings.retry_params = None
 
   def tearDown(self):

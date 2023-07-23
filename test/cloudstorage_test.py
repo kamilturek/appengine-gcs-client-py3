@@ -21,6 +21,7 @@ try:
   import cloudstorage
   from cloudstorage import cloudstorage_api
   from cloudstorage.port import cloudstorage_stub
+  from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
   from cloudstorage import common
   from cloudstorage import errors
   from cloudstorage import storage_api
@@ -55,7 +56,7 @@ class IrregularPatternTest(unittest.TestCase):
     self.testbed.init_blobstore_stub()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
-    self.testbed.init_urlfetch_stub()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     self._old_max_keys = common._MAX_GET_BUCKET_RESULT
     common._MAX_GET_BUCKET_RESULT = 2
     self.start_time = time.time()
@@ -119,7 +120,7 @@ class CloudStorageTest(unittest.TestCase):
     self.testbed.init_blobstore_stub()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
-    self.testbed.init_urlfetch_stub()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     self._old_max_keys = common._MAX_GET_BUCKET_RESULT
     common._MAX_GET_BUCKET_RESULT = 2
     self.start_time = time.time()
@@ -531,7 +532,7 @@ class CloudStorageComposeTest(unittest.TestCase):
     self.testbed.init_blobstore_stub()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
-    self.testbed.init_urlfetch_stub()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     self._old_max_keys = common._MAX_GET_BUCKET_RESULT
     common._MAX_GET_BUCKET_RESULT = 2
     self.start_time = time.time()

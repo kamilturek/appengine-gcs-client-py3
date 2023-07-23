@@ -137,7 +137,7 @@ class _RestApi(object):
         default for current thread will be used.
     """
 
-    if isinstance(scopes, basestring):
+    if isinstance(scopes, str):
       scopes = [scopes]
     self.scopes = scopes
     self.service_account_id = service_account_id

@@ -51,8 +51,7 @@ def _make_token_async(scopes, service_account_id):
     seconds since the epoch.
   """
   rpc = app_identity.create_rpc()
-  app_identity.make_get_access_token_call(rpc, scopes, service_account_id)
-  token, expires_at = yield rpc
+  token, expires_at = app_identity.get_access_token(scopes, service_account_id)
   raise ndb.Return((token, expires_at))
 
 

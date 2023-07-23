@@ -1,5 +1,5 @@
 [project]
-name = "GoogleAppEngineCloudStorageClient"
+name = "GoogleAppEngineCloudStorageClientPy3"
 version = "3.0.0"
 authors = [{name = "Kamil Turek", email = "kamil.turek@hotmail.com"}]
 description = """

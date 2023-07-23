@@ -5,3 +5,4 @@ MANIFEST
 .settings
 */target
 .DS_Store
+*.egg-info

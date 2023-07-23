@@ -170,8 +170,8 @@ class _RetryWrapper(object):
             'Tasklet has exceeded request deadline after %s seconds total',
             time.time() - start_time)
         raise
-      except self.retriable_exceptions as e:
-        pass
+      except (*self.retriable_exceptions,) as exc:
+        e = exc
 
       if n == 1:
         logging.debug('Tasklet is %r', tasklet)

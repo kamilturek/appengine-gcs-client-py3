@@ -20,7 +20,7 @@ from google.appengine.ext import testbed
 try:
   import cloudstorage
   from cloudstorage import cloudstorage_api
-  from google.appengine.ext.cloudstorage import cloudstorage_stub
+  from cloudstorage.port import cloudstorage_stub
   from cloudstorage import common
   from cloudstorage import errors
   from cloudstorage import storage_api

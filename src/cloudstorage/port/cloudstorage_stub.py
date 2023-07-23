@@ -23,13 +23,13 @@
 import calendar
 import datetime
 import hashlib
-import httplib
-import StringIO
+import http.client
+import io
 
 
 try:
 
-  from google.appengine._internal.cloudstorage import common
+  from cloudstorage import common
   from google.appengine.api import datastore
   from google.appengine.api import namespace_manager
   from google.appengine.api.blobstore import blobstore_stub
@@ -83,7 +83,7 @@ class _AE_GCSFileInfo_(db.Model):
 
   def set_options(self, options_dict):
     self.raw_options = [
-        '%s:%s' % (k.lower(), v) for k, v in options_dict.iteritems()]
+        '%s:%s' % (k.lower(), v) for k, v in options_dict.items()]
     if 'content-type' in options_dict:
       self.content_type = options_dict['content-type']
 
@@ -221,7 +221,7 @@ class CloudStorageStub(object):
       namespace_manager.set_namespace('')
       gcs_file = _AE_GCSFileInfo_.get_by_key_name(token)
       if not gcs_file:
-        raise ValueError('Invalid token', httplib.BAD_REQUEST)
+        raise ValueError('Invalid token', http.client.BAD_REQUEST)
       return gcs_file.next_offset - 1
     finally:
       namespace_manager.set_namespace(ns)
@@ -258,21 +258,21 @@ class CloudStorageStub(object):
       namespace_manager.set_namespace('')
       gcs_file = _AE_GCSFileInfo_.get_by_key_name(token)
       if not gcs_file:
-        raise ValueError('Invalid token', httplib.BAD_REQUEST)
+        raise ValueError('Invalid token', http.client.BAD_REQUEST)
       if gcs_file.next_offset == -1:
         raise ValueError('Received more uploads after file %s '
                          'was finalized.' % gcs_file.filename,
-                         httplib.OK)
+                         http.client.OK)
       if content:
         start, end = content_range
         if len(content) != (end - start + 1):
           raise ValueError('Invalid content range %d-%d' % content_range,
-                           httplib.REQUESTED_RANGE_NOT_SATISFIABLE)
+                           http.client.REQUESTED_RANGE_NOT_SATISFIABLE)
 
         if start > gcs_file.next_offset:
           raise ValueError('Expect start offset %s, got %s' %
                            (gcs_file.next_offset, start),
-                           httplib.REQUESTED_RANGE_NOT_SATISFIABLE)
+                           http.client.REQUESTED_RANGE_NOT_SATISFIABLE)
 
         elif end < gcs_file.next_offset:
           return
@@ -281,7 +281,7 @@ class CloudStorageStub(object):
           content = content[gcs_file.next_offset - start:]
           start = gcs_file.next_offset
           blobkey = '%s-%d-%d' % (token, start, end)
-          self.blob_storage.StoreBlob(blobkey, StringIO.StringIO(content))
+          self.blob_storage.StoreBlob(blobkey, io.BytesIO(content))
           new_content = _AE_GCSPartialFile_(
               parent=gcs_file,
 
@@ -296,7 +296,7 @@ class CloudStorageStub(object):
         raise ValueError(
             'Got finalization request with wrong file length. '
             'Expecting %s, got %s' % (gcs_file.next_offset, length),
-            httplib.REQUESTED_RANGE_NOT_SATISFIABLE)
+            http.client.REQUESTED_RANGE_NOT_SATISFIABLE)
       elif length is not None:
         return self._end_creation(token, _upload_filename)
     finally:
@@ -384,7 +384,7 @@ class CloudStorageStub(object):
     blob_info['size'] = gcs_file.size
     datastore.Put(blob_info)
 
-    self.blob_storage.StoreBlob(token, StringIO.StringIO(content))
+    self.blob_storage.StoreBlob(token, io.BytesIO(content))
 
     gcs_file.finalized = True
 

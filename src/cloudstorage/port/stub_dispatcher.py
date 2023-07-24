@@ -53,6 +53,8 @@ class _FakeUrlFetchResult(object):
   def __init__(self, status, headers, content):
     self.status_code = status
     self.headers = headers
+    if isinstance(content, str):
+      content = content.encode('utf-8')
     self.content = content
 
 
@@ -148,7 +150,7 @@ def _handle_post(gcs_stub, filename, headers):
       'content-type': content_type.value,
       'content-length': 0
   }
-  return _FakeUrlFetchResult(http.client.CREATED, response_headers, '')
+  return _FakeUrlFetchResult(http.client.CREATED, response_headers, b'')
 
 
 def _handle_put(gcs_stub, filename, param_dict, headers, payload):
@@ -171,7 +173,7 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
 
   if (headers.get('x-goog-if-generation-match', None) == '0' and
       gcs_stub.head_object(filename) is not None):
-    return _FakeUrlFetchResult(http.client.PRECONDITION_FAILED, {}, '')
+    return _FakeUrlFetchResult(http.client.PRECONDITION_FAILED, {}, b'')
 
 
 
@@ -206,7 +208,7 @@ def _handle_put(gcs_stub, filename, param_dict, headers, payload):
     response_headers = {}
     response_status = 308
 
-  return _FakeUrlFetchResult(response_status, response_headers, '')
+  return _FakeUrlFetchResult(response_status, response_headers, b'')
 
 
 def _is_query_progress(content_range):
@@ -217,11 +219,11 @@ def _is_query_progress(content_range):
 def _find_progress(gcs_stub, filename, token):
 
   if gcs_stub.head_object(filename) is not None:
-    return _FakeUrlFetchResult(http.client.OK, {}, '')
+    return _FakeUrlFetchResult(http.client.OK, {}, b'')
   last_offset = gcs_stub.put_empty(token)
   if last_offset == -1:
-    return _FakeUrlFetchResult(308, {}, '')
-  return _FakeUrlFetchResult(308, {'range': 'bytes=0-%s' % last_offset}, '')
+    return _FakeUrlFetchResult(308, {}, b'')
+  return _FakeUrlFetchResult(308, {'range': 'bytes=0-%s' % last_offset}, b'')
 
 
 def _iscopy(headers):
@@ -249,7 +251,7 @@ def _copy(gcs_stub, filename, headers):
     gcs_stub.put_copy(source, filename, headers)
   else:
     gcs_stub.put_copy(source, filename, None)
-  return _FakeUrlFetchResult(http.client.OK, {}, '')
+  return _FakeUrlFetchResult(http.client.OK, {}, b'')
 
 
 def _handle_get(gcs_stub, filename, param_dict, headers):
@@ -333,7 +335,7 @@ def _handle_get_bucket(gcs_stub, bucketpath, param_dict):
       builder.end('LastModified')
 
       builder.start('ETag', {})
-      builder.data(stat.etag)
+      builder.data(stat.etag.decode('utf-8'))
       builder.end('ETag')
 
       builder.start('Size', {})
@@ -370,7 +372,7 @@ def _handle_head(gcs_stub, filename):
   """Handle HEAD request."""
   filestat = gcs_stub.head_object(filename)
   if not filestat:
-    return _FakeUrlFetchResult(http.client.NOT_FOUND, {}, '')
+    return _FakeUrlFetchResult(http.client.NOT_FOUND, {}, b'')
 
   http_time = common.posix_time_to_http(filestat.st_ctime)
 
@@ -385,15 +387,15 @@ def _handle_head(gcs_stub, filename):
   if filestat.metadata:
     response_headers.update(filestat.metadata)
 
-  return _FakeUrlFetchResult(http.client.OK, response_headers, '')
+  return _FakeUrlFetchResult(http.client.OK, response_headers, b'')
 
 
 def _handle_delete(gcs_stub, filename):
   """Handle DELETE object."""
   if gcs_stub.delete_object(filename):
-    return _FakeUrlFetchResult(http.client.NO_CONTENT, {}, '')
+    return _FakeUrlFetchResult(http.client.NO_CONTENT, {}, b'')
   else:
-    return _FakeUrlFetchResult(http.client.NOT_FOUND, {}, '')
+    return _FakeUrlFetchResult(http.client.NOT_FOUND, {}, b'')
 
 
 class _Header(object):

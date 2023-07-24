@@ -350,7 +350,7 @@ class ReadBuffer(object):
     """
     self._check_open()
     if size == 0 or not self._remaining():
-      return ''
+      return b''
 
     data_list = []
     newline_offset = self._buffer.find_newline(size)
@@ -360,7 +360,7 @@ class ReadBuffer(object):
       self._offset += len(data)
       data_list.append(data)
       if size == 0 or not self._remaining():
-        return ''.join(data_list)
+        return b''.join(data_list)
       self._buffer.reset(self._buffer_future.get_result())
       self._request_next_buffer()
       newline_offset = self._buffer.find_newline(size)
@@ -369,7 +369,7 @@ class ReadBuffer(object):
     self._offset += len(data)
     data_list.append(data)
 
-    return ''.join(data_list)
+    return b''.join(data_list)
 
   def read(self, size=-1):
     """Read data from RAW file.
@@ -380,14 +380,14 @@ class ReadBuffer(object):
         negative or unspecified, read the entire file.
 
     Returns:
-      data read as str.
+      data read as bytes.
 
     Raises:
       IOError: When this buffer is closed.
     """
     self._check_open()
     if not self._remaining():
-      return ''
+      return b''
 
     data_list = []
     while True:
@@ -416,7 +416,7 @@ class ReadBuffer(object):
 
     if self._buffer_future is None:
       self._request_next_buffer()
-    return ''.join(data_list)
+    return b''.join(data_list)
 
   def _remaining(self):
     return self._file_size - self._offset
@@ -599,7 +599,7 @@ class _Buffer(object):
   def __init__(self):
     self.reset()
 
-  def reset(self, content='', offset=0):
+  def reset(self, content=b'', offset=0):
     self._buffer = content
     self._offset = offset
 
@@ -646,8 +646,8 @@ class _Buffer(object):
       offset of newline char in buffer. -1 if doesn't exist.
     """
     if size < 0:
-      return self._buffer.find('\n', self._offset)
-    return self._buffer.find('\n', self._offset, self._offset + size)
+      return self._buffer.find(b'\n', self._offset)
+    return self._buffer.find(b'\n', self._offset, self._offset + size)
 
 
 class StreamingBuffer(object):
@@ -753,14 +753,14 @@ class StreamingBuffer(object):
     """Write some bytes.
 
     Args:
-      data: data to write. str.
+      data: data to write. bytes.
 
     Raises:
-      TypeError: if data is not of type str.
+      TypeError: if data is not of type bytes.
     """
     self._check_open()
-    if not isinstance(data, str):
-      raise TypeError('Expected str but got %s.' % type(data))
+    if not isinstance(data, bytes):
+      raise TypeError('Expected bytes but got %s.' % type(data))
     if not data:
       return
     self._buffer.append(data)
@@ -843,7 +843,7 @@ class StreamingBuffer(object):
           tmp_buffer.append(head)
           tmp_buffer_len += len(head)
 
-      data = ''.join(tmp_buffer)
+      data = b''.join(tmp_buffer)
       file_len = '*'
       if finish and not self._buffered:
         file_len = self._written + len(data)

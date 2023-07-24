@@ -404,7 +404,7 @@ class CloudStorageStub(object):
       corrupted during upload. Otherwise content is set to the
       aggregation of all partial contents.
     """
-    content = ''
+    content = b''
     previous_end = 0
     error_msg = ''
     for partial in (_AE_GCSPartialFile_.all(namespace='').ancestor(gcs_file).
@@ -421,7 +421,7 @@ class CloudStorageStub(object):
       partial.delete()
     if error_msg:
       gcs_file.delete()
-      content = ''
+      content = b''
     return error_msg, content
 
   @db.non_transactional

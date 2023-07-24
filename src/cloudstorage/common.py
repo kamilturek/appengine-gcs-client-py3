@@ -153,16 +153,21 @@ class GCSFileStat(object):
              content_type=self.content_type,
              metadata=self.metadata))
 
-  def __cmp__(self, other):
+  def __lt__(self, other):
     if not isinstance(other, self.__class__):
-      raise ValueError('Argument to cmp must have the same type. '
+      raise ValueError('Argument to __lt__ must have the same type. '
                        'Expect %s, got %s', self.__class__.__name__,
                        other.__class__.__name__)
-    if self.filename > other.filename:
-      return 1
-    elif self.filename < other.filename:
-      return -1
-    return 0
+
+    return self.filename < other.filename
+
+  def __eq__(self, other):
+    if not isinstance(other, self.__class__):
+      raise ValueError('Argument to __eq__ must have the same type. '
+                       'Expect %s, got %s', self.__class__.__name__,
+                       other.__class__.__name__)
+
+    return self.filename == other.filename
 
   def __hash__(self):
     if self.etag:

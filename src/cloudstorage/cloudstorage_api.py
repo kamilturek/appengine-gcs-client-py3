@@ -589,9 +589,9 @@ class _Bucket(object):
     Yields:
       GCSFileStat for the next file.
     """
-    for e in root.getiterator(common._T_CONTENTS):
+    for e in root.iter(common._T_CONTENTS):
       st_ctime, size, etag, key = None, None, None, None
-      for child in e.getiterator('*'):
+      for child in e.iter('*'):
         if child.tag == common._T_LAST_MODIFIED:
           st_ctime = common.dt_str_to_posix(child.text)
         elif child.tag == common._T_ETAG:
@@ -614,7 +614,7 @@ class _Bucket(object):
     Yields:
       GCSFileStat for the next directory.
     """
-    for e in root.getiterator(common._T_COMMON_PREFIXES):
+    for e in root.iter(common._T_COMMON_PREFIXES):
       yield common.GCSFileStat(
           self._path + '/' + e.find(common._T_PREFIX).text,
           st_size=None, etag=None, st_ctime=None, is_dir=True)

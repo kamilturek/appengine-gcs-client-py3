@@ -17,12 +17,10 @@ def urlfetch_to_gcs_stub(url, payload, method, headers, request, response,
   result = gcs_dispatcher.dispatch(method, headers_map, url, payload)
   response.StatusCode = result.status_code
   response.Content = result.content[:urlfetch_stub.MAX_RESPONSE_SIZE]
-  for k, v in result.headers.iteritems():
+  for k, v in result.headers.items():
     if k.lower() == 'content-length' and method != 'HEAD':
-      v = len(response.content())
-    header_proto = response.add_header()
-    header_proto.set_key(k)
-    header_proto.set_value(str(v))
+      v = len(response.Content)
+    response.header.add(Key=k, Value=str(v))
   if len(result.content) > urlfetch_stub.MAX_RESPONSE_SIZE:
     response.ContentWasTrusted = True
 

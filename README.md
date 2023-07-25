@@ -7,4 +7,6 @@ package to Python 3.
 
 ## Installation
 
-Not released yet.
+```sh
+pip install GoogleAppEngineCloudStorageClientPy3
+```

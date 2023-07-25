@@ -16,7 +16,6 @@
 
 
 
-from __future__ import with_statement
 
 
 
@@ -30,13 +29,14 @@ __all__ = ['copy2',
            'get_storage_class',
           ]
 
+import io
 import logging
-import StringIO
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import os
 import itertools
 import types
 import xml.etree.cElementTree as ET
+
 from . import api_utils
 from . import common
 from . import errors
@@ -450,7 +450,7 @@ def _validate_compose_list(destination_file, file_list,
   common.validate_file_path(destination_file)
   bucket = destination_file[0:(destination_file.index('/', 1) + 1)]
   try:
-    if isinstance(file_list, types.StringTypes):
+    if isinstance(file_list, (str,)):
       raise TypeError
     list_len = len(file_list)
   except TypeError:
@@ -471,8 +471,8 @@ def _validate_compose_list(destination_file, file_list,
                      ' than file_list(%i)'
                      % (len(files_metadata), list_len))
   list_of_files = []
-  for source_file, meta_data in itertools.izip_longest(file_list,
-                                                       files_metadata):
+  for source_file, meta_data in itertools.zip_longest(file_list,
+                                                      files_metadata):
     if not isinstance(source_file, str):
       raise TypeError('Each item of file_list must be a string')
     if source_file.startswith('/'):
@@ -513,7 +513,7 @@ class _Bucket(object):
     self._path = path
     self._options = options.copy()
     self._get_bucket_fut = self._api.get_bucket_async(
-        self._path + '?' + urllib.urlencode(self._options))
+        self._path + '?' + urllib.parse.urlencode(self._options))
     self._last_yield = None
     self._new_max_keys = self._options.get('max-keys')
 
@@ -547,31 +547,31 @@ class _Bucket(object):
 
       if self._should_get_another_batch(content):
         self._get_bucket_fut = self._api.get_bucket_async(
-            self._path + '?' + urllib.urlencode(self._options))
+            self._path + '?' + urllib.parse.urlencode(self._options))
       else:
         self._get_bucket_fut = None
 
       root = ET.fromstring(content)
       dirs = self._next_dir_gen(root)
       files = self._next_file_gen(root)
-      next_file = files.next()
-      next_dir = dirs.next()
+      next_file = next(files)
+      next_dir = next(dirs)
 
       while ((max_keys is None or total < max_keys) and
              not (next_file is None and next_dir is None)):
         total += 1
         if next_file is None:
           self._last_yield = next_dir
-          next_dir = dirs.next()
+          next_dir = next(dirs)
         elif next_dir is None:
           self._last_yield = next_file
-          next_file = files.next()
+          next_file = next(files)
         elif next_dir < next_file:
           self._last_yield = next_dir
-          next_dir = dirs.next()
+          next_dir = next(dirs)
         elif next_file < next_dir:
           self._last_yield = next_file
-          next_file = files.next()
+          next_file = next(files)
         else:
           logging.error(
               'Should never reach. next file is %r. next dir is %r.',
@@ -589,9 +589,9 @@ class _Bucket(object):
     Yields:
       GCSFileStat for the next file.
     """
-    for e in root.getiterator(common._T_CONTENTS):
+    for e in root.iter(common._T_CONTENTS):
       st_ctime, size, etag, key = None, None, None, None
-      for child in e.getiterator('*'):
+      for child in e.iter('*'):
         if child.tag == common._T_LAST_MODIFIED:
           st_ctime = common.dt_str_to_posix(child.text)
         elif child.tag == common._T_ETAG:
@@ -614,7 +614,7 @@ class _Bucket(object):
     Yields:
       GCSFileStat for the next directory.
     """
-    for e in root.getiterator(common._T_COMMON_PREFIXES):
+    for e in root.iter(common._T_COMMON_PREFIXES):
       yield common.GCSFileStat(
           self._path + '/' + e.find(common._T_PREFIX).text,
           st_size=None, etag=None, st_ctime=None, is_dir=True)
@@ -663,7 +663,7 @@ class _Bucket(object):
       A dict from element tag to element value.
     """
     element_mapping = {}
-    result = StringIO.StringIO(result)
+    result = io.BytesIO(result)
     for _, e in ET.iterparse(result, events=('end',)):
       if not elements:
         break

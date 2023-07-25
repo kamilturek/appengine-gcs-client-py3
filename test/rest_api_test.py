@@ -3,10 +3,10 @@
 
 
 
-import httplib
+import http.client
 import pickle
 import unittest
-import mock
+from unittest import mock
 
 from google.appengine.ext import ndb
 from google.appengine.api import app_identity
@@ -18,6 +18,7 @@ try:
   from cloudstorage import api_utils
   from cloudstorage import rest_api
   from cloudstorage import test_utils
+  from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
 except ImportError:
   from google.appengine.ext.cloudstorage import api_utils
   from google.appengine.ext.cloudstorage import rest_api
@@ -33,11 +34,12 @@ class RestApiTest(unittest.TestCase):
     self.testbed.init_app_identity_stub()
     self.testbed.init_datastore_v3_stub()
     self.testbed.init_memcache_stub()
-    self.testbed.init_urlfetch_stub()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     api_utils._thread_local_settings.retry_params = None
 
   def tearDown(self):
     self.testbed.deactivate()
+    ndb.get_context().clear_cache()
     super(RestApiTest, self).tearDown()
 
   def testBasicCall(self):
@@ -52,21 +54,21 @@ class RestApiTest(unittest.TestCase):
     fut_urlfetch = ndb.Future()
     fut_urlfetch.set_result(
         test_utils.MockUrlFetchResult(200, {'foo': 'bar'}, 'yoohoo'))
-    ctx_urlfetch = mock.Mock(return_value=fut_urlfetch)
-    ndb.get_context().urlfetch = ctx_urlfetch
 
-    res = api.do_request('http://example.com')
+    with mock.patch.object(ndb.Context, 'urlfetch',
+                           return_value=fut_urlfetch) as ctx_urlfetch:
+      res = api.do_request('http://example.com')
 
-    self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
-    ctx_urlfetch.assert_called_once_with(
-        'http://example.com',
-        headers={'authorization': 'OAuth blah',
-                 'User-Agent': 'AppEngine-Python-GCS'},
-        follow_redirects=False,
-        payload=None,
-        method='GET',
-        deadline=None,
-        callback=None)
+      self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
+      ctx_urlfetch.assert_called_once_with(
+          'http://example.com',
+          headers={'authorization': 'OAuth blah',
+                  'User-Agent': 'AppEngine-Python-GCS'},
+          follow_redirects=False,
+          payload=None,
+          method='GET',
+          deadline=None,
+          callback=None)
 
   def testBasicCallWithUserAgent(self):
     user_agent = 'Test User Agent String'
@@ -82,21 +84,20 @@ class RestApiTest(unittest.TestCase):
     fut_urlfetch = ndb.Future()
     fut_urlfetch.set_result(
         test_utils.MockUrlFetchResult(200, {'foo': 'bar'}, 'yoohoo'))
-    ctx_urlfetch = mock.Mock(return_value=fut_urlfetch)
-    ndb.get_context().urlfetch = ctx_urlfetch
+    with mock.patch.object(ndb.Context, 'urlfetch',
+                           return_value=fut_urlfetch) as ctx_urlfetch:
+      res = api.do_request('http://example.com')
 
-    res = api.do_request('http://example.com')
-
-    self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
-    ctx_urlfetch.assert_called_once_with(
-        'http://example.com',
-        headers={'authorization': 'OAuth blah',
-                 'User-Agent': user_agent},
-        follow_redirects=False,
-        payload=None,
-        method='GET',
-        deadline=None,
-        callback=None)
+      self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
+      ctx_urlfetch.assert_called_once_with(
+          'http://example.com',
+          headers={'authorization': 'OAuth blah',
+                  'User-Agent': user_agent},
+          follow_redirects=False,
+          payload=None,
+          method='GET',
+          deadline=None,
+          callback=None)
 
   def testNoToken(self):
     api = rest_api._RestApi('scope')
@@ -110,20 +111,19 @@ class RestApiTest(unittest.TestCase):
     fut_urlfetch = ndb.Future()
     fut_urlfetch.set_result(
         test_utils.MockUrlFetchResult(200, {'foo': 'bar'}, 'yoohoo'))
-    ctx_urlfetch = mock.Mock(return_value=fut_urlfetch)
-    ndb.get_context().urlfetch = ctx_urlfetch
+    with mock.patch.object(ndb.Context, 'urlfetch',
+                           return_value=fut_urlfetch) as ctx_urlfetch:
+      res = api.do_request('http://example.com')
 
-    res = api.do_request('http://example.com')
-
-    self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
-    ctx_urlfetch.assert_called_once_with(
-        'http://example.com',
-        headers={'User-Agent': 'AppEngine-Python-GCS'},
-        follow_redirects=False,
-        payload=None,
-        method='GET',
-        deadline=None,
-        callback=None)
+      self.assertEqual(res, (200, {'foo': 'bar'}, 'yoohoo'))
+      ctx_urlfetch.assert_called_once_with(
+          'http://example.com',
+          headers={'User-Agent': 'AppEngine-Python-GCS'},
+          follow_redirects=False,
+          payload=None,
+          method='GET',
+          deadline=None,
+          callback=None)
 
   def testMultipleScopes(self):
     api = rest_api._RestApi(['scope1', 'scope2'])
@@ -211,11 +211,10 @@ class RestApiTest(unittest.TestCase):
 
     fut = ndb.Future()
     fut.set_result(test_utils.MockUrlFetchResult(200, {}, 'response'))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        return_value=fut)
 
-    res = api.urlfetch('http://example.com', method='PUT', headers={'a': 'b'})
+    with mock.patch.object(ndb.Context, 'urlfetch', return_value=fut,
+                           autospec=True):
+      res = api.urlfetch('http://example.com', method='PUT', headers={'a': 'b'})
 
     self.assertEqual(res.status_code, 200)
     self.assertEqual(res.content, 'response')
@@ -229,7 +228,7 @@ class RestApiTest(unittest.TestCase):
     pickled_api = pickle.loads(pickle.dumps(api))
     self.assertEqual(0, len(set(api.__dict__.keys()) ^
                             set(pickled_api.__dict__.keys())))
-    for k, v in api.__dict__.iteritems():
+    for k, v in api.__dict__.items():
       if not hasattr(v, '__call__'):
         self.assertEqual(v, pickled_api.__dict__[k])
 
@@ -251,17 +250,16 @@ class RestApiTest(unittest.TestCase):
     resp_fut1 = ndb.Future()
     resp_fut1.set_exception(urlfetch.DownloadError())
     resp_fut2 = ndb.Future()
-    resp_fut2.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut2.set_result(test_utils.MockUrlFetchResult(http.client.ACCEPTED,
                                                        None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut1, resp_fut2])
-
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(
-        90, ndb.Context.urlfetch.call_args_list[0][1]['deadline'])
-    self.assertEqual(
-        90, ndb.Context.urlfetch.call_args_list[1][1]['deadline'])
+    
+    with mock.patch.object(ndb.Context, 'urlfetch',
+                           side_effect=[resp_fut1, resp_fut2], autospec=True):
+      self.assertEqual(http.client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(
+          90, ndb.Context.urlfetch.call_args_list[0][1]['deadline'])
+      self.assertEqual(
+          90, ndb.Context.urlfetch.call_args_list[1][1]['deadline'])
 
   def testRetryAfterDoRequestUrlFetchTimeout(self):
     api = rest_api._RestApi('scope')
@@ -269,30 +267,26 @@ class RestApiTest(unittest.TestCase):
     resp_fut1 = ndb.Future()
     resp_fut1.set_exception(urlfetch.DownloadError())
     resp_fut2 = ndb.Future()
-    resp_fut2.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut2.set_result(test_utils.MockUrlFetchResult(http.client.ACCEPTED,
                                                        None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut1, resp_fut2])
-
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(2, ndb.Context.urlfetch.call_count)
+    with mock.patch.object(ndb.Context, 'urlfetch',
+                           side_effect=[resp_fut1, resp_fut2], autospec=True):
+      self.assertEqual(http.client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(2, ndb.Context.urlfetch.call_count)
 
   def testRetryAfterDoRequestResponseTimeout(self):
     api = rest_api._RestApi('scope')
 
     resp_fut1 = ndb.Future()
-    resp_fut1.set_result(test_utils.MockUrlFetchResult(httplib.REQUEST_TIMEOUT,
+    resp_fut1.set_result(test_utils.MockUrlFetchResult(http.client.REQUEST_TIMEOUT,
                                                        None, None))
     resp_fut2 = ndb.Future()
-    resp_fut2.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut2.set_result(test_utils.MockUrlFetchResult(http.client.ACCEPTED,
                                                        None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut1, resp_fut2])
-
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(2, ndb.Context.urlfetch.call_count)
+    with mock.patch.object(ndb.Context, 'urlfetch',
+                           side_effect=[resp_fut1, resp_fut2], autospec=True):
+      self.assertEqual(http.client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(2, ndb.Context.urlfetch.call_count)
 
   def testRetryAfterAppIdentityError(self):
     api = rest_api._RestApi('scope')
@@ -306,17 +300,15 @@ class RestApiTest(unittest.TestCase):
                      token_fut])
 
     resp_fut = ndb.Future()
-    resp_fut.set_result(test_utils.MockUrlFetchResult(httplib.ACCEPTED,
+    resp_fut.set_result(test_utils.MockUrlFetchResult(http.client.ACCEPTED,
                                                       None, None))
-    ndb.Context.urlfetch = mock.create_autospec(
-        ndb.Context.urlfetch,
-        side_effect=[resp_fut])
-
-    self.assertEqual(httplib.ACCEPTED, api.do_request('foo')[0])
-    self.assertEqual(
-        'OAuth token1',
-        ndb.Context.urlfetch.call_args[1]['headers']['authorization'])
-    self.assertEqual(3, api.get_token_async.call_count)
+    with mock.patch.object(ndb.Context, 'urlfetch', side_effect=[resp_fut],
+                           autospec=True):
+      self.assertEqual(http.client.ACCEPTED, api.do_request('foo')[0])
+      self.assertEqual(
+          'OAuth token1',
+          ndb.Context.urlfetch.call_args[1]['headers']['authorization'])
+      self.assertEqual(3, api.get_token_async.call_count)
 
 
 if __name__ == '__main__':

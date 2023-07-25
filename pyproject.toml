@@ -1,6 +1,6 @@
 [project]
 name = "GoogleAppEngineCloudStorageClientPy3"
-version = "3.0.0"
+version = "3.0.0a1"
 authors = [{name = "Kamil Turek", email = "kamil.turek@hotmail.com"}]
 description = """
 This library is the preferred way of accessing Google
@@ -12,7 +12,7 @@ stability improvements and a better overall developer
 experience.
 """
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.7"
 keywords = ["google", "app engine", "cloud storage"]
 license = {text = "Apache-2.0"}
 classifiers = [
@@ -27,7 +27,13 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Internet",
 ]
-dependencies = []
+dependencies = [
+    "appengine-python-standard"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 dev = [

@@ -16,6 +16,7 @@ from google.appengine.ext import testbed
 
 try:
   from cloudstorage import api_utils
+  from cloudstorage.port.testbed import GCS_URLMATCHERS_TO_FETCH_FUNCTIONS
   from google.appengine.api import app_identity
   from google.appengine.api import urlfetch
   from google.appengine.api import urlfetch_errors
@@ -37,6 +38,7 @@ class EagerTaskletTest(unittest.TestCase):
     self.testbed = testbed.Testbed()
     self.testbed.activate()
     self.testbed.init_all_stubs()
+    self.testbed.init_urlfetch_stub(urlmatchers=GCS_URLMATCHERS_TO_FETCH_FUNCTIONS)
     self.urlfetch_called = False
     hooks = apiproxy_stub_map.apiproxy.GetPreCallHooks()
     hooks.Append('key', self.UrlfetchPreCallHook, 'urlfetch')
@@ -175,23 +177,23 @@ class RetryParamsTest(unittest.TestCase):
 
 
 @ndb.tasklet
-def test_tasklet1(a, b):
-  result = yield test_tasklet2(a)
+def tasklet1(a, b):
+  result = yield tasklet2(a)
   raise ndb.Return(result, b)
 
 
 @ndb.tasklet
-def test_tasklet2(a):
+def tasklet2(a):
   raise ndb.Return(a)
 
 
 @ndb.tasklet
-def test_tasklet3(a):
+def tasklet3(a):
   raise ValueError('Raise an error %r for testing.' % a)
 
 
 @ndb.tasklet
-def test_tasklet4():
+def tasklet4():
   raise runtime.DeadlineExceededError('Raise an error for testing.')
 
 
@@ -212,7 +214,7 @@ class RetriableTaskletTest(unittest.TestCase):
 
   def testTaskletWasSuccessful(self):
     fut = api_utils._RetryWrapper(api_utils.RetryParams()).run(
-        test_tasklet1, a=1, b=2)
+        tasklet1, a=1, b=2)
     a, b = fut.get_result()
     self.assertEqual(1, a)
     self.assertEqual(2, b)
@@ -267,19 +269,19 @@ class RetriableTaskletTest(unittest.TestCase):
     retry_params = api_utils.RetryParams(min_retries=0, max_retries=0)
     fut = api_utils._RetryWrapper(
         retry_params, retriable_exceptions=[ValueError]).run(
-            test_tasklet3, a=1)
+            tasklet3, a=1)
     self.assertRaises(ValueError, fut.get_result)
 
   def testNoRetryDueToErrorType(self):
     fut = api_utils._RetryWrapper(
         api_utils.RetryParams(),
         retriable_exceptions=[TypeError]).run(
-            test_tasklet3, a=1)
+            tasklet3, a=1)
     self.assertRaises(ValueError, fut.get_result)
 
   def testRuntimeError(self):
     fut = api_utils._RetryWrapper(
-        api_utils.RetryParams()).run(test_tasklet4)
+        api_utils.RetryParams()).run(tasklet4)
     self.assertRaises(runtime.DeadlineExceededError, fut.get_result)
 
 

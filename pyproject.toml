@@ -1,6 +1,6 @@
 [project]
 name = "GoogleAppEngineCloudStorageClientPy3"
-version = "3.0.0"
+version = "3.0.0a1"
 authors = [{name = "Kamil Turek", email = "kamil.turek@hotmail.com"}]
 description = """
 This library is the preferred way of accessing Google

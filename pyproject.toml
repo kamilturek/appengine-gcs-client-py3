@@ -12,7 +12,7 @@ stability improvements and a better overall developer
 experience.
 """
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.6"
 keywords = ["google", "app engine", "cloud storage"]
 license = {text = "Apache-2.0"}
 classifiers = [
@@ -27,7 +27,9 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Internet",
 ]
-dependencies = []
+dependencies = [
+    "appengine-python-standard"
+]
 
 [project.optional-dependencies]
 dev = [

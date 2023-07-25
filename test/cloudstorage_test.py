@@ -253,13 +253,13 @@ class CloudStorageTest(unittest.TestCase):
     self.assertRaises(errors.NotFoundError, cloudstorage.stat, TESTFILE)
 
   def testGetLocation(self):
-    self.assertEquals('US', cloudstorage.get_location('/some-bucket'))
+    self.assertEqual('US', cloudstorage.get_location('/some-bucket'))
 
     self.assertRaises(ValueError, cloudstorage.get_location, 'bad-format')
     self.assertRaises(ValueError, cloudstorage.get_location, '/bad-format/obj')
 
   def testGetStorageClass(self):
-    self.assertEquals('STANDARD',
+    self.assertEqual('STANDARD',
                       cloudstorage.get_storage_class('/some-bucket'))
 
     self.assertRaises(ValueError, cloudstorage.get_storage_class, 'bad-format')

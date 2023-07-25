@@ -12,7 +12,7 @@ stability improvements and a better overall developer
 experience.
 """
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.7"
 keywords = ["google", "app engine", "cloud storage"]
 license = {text = "Apache-2.0"}
 classifiers = [

@@ -6,3 +6,4 @@ MANIFEST
 */target
 .DS_Store
 *.egg-info
+dist/

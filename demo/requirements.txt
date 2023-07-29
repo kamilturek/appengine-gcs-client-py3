@@ -1,0 +1,3 @@
+appengine-python-standard
+GoogleAppEngineCloudStorageClientPy3
+webapp2==3.0.0b1

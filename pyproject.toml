@@ -1,6 +1,6 @@
 [project]
 name = "GoogleAppEngineCloudStorageClientPy3"
-version = "3.0.0a1"
+version = "3.0.0"
 authors = [{name = "Kamil Turek", email = "kamil.turek@hotmail.com"}]
 description = """
 This library is the preferred way of accessing Google
@@ -20,6 +20,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",

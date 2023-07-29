@@ -10,3 +10,7 @@ package to Python 3.
 ```sh
 pip install GoogleAppEngineCloudStorageClientPy3
 ```
+
+## Demo
+
+See the [demo](./demo/) application for sample usage.

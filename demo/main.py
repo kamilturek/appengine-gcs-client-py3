@@ -9,7 +9,7 @@ import os
 import cloudstorage as gcs
 import webapp2
 
-from google.appengine.api import app_identity
+from google.appengine.api import app_identity, wrap_wsgi_app
 #[END imports]
 
 #[START retries]
@@ -31,7 +31,7 @@ class MainPage(webapp2.RequestHandler):
 
     self.response.headers['Content-Type'] = 'text/plain'
     self.response.write('Demo GCS Application running from Version: '
-                        + os.environ['CURRENT_VERSION_ID'] + '\n')
+                        + os.environ['GAE_VERSION'] + '\n')
     self.response.write('Using bucket name: ' + bucket_name + '\n\n')
 #[END get_default_bucket]
 
@@ -61,7 +61,7 @@ class MainPage(webapp2.RequestHandler):
       self.list_bucket_directory_mode(bucket)
       self.response.write('\n\n')
 
-    except Exception, e:
+    except Exception as e:
       logging.exception(e)
       self.delete_files()
       self.response.write('\n\nThere was an error running the demo! '
@@ -90,8 +90,8 @@ class MainPage(webapp2.RequestHandler):
                         options={'x-goog-meta-foo': 'foo',
                                  'x-goog-meta-bar': 'bar'},
                         retry_params=write_retry_params)
-    gcs_file.write('abcde\n')
-    gcs_file.write('f'*1024*4 + '\n')
+    gcs_file.write(b'abcde\n')
+    gcs_file.write(b'f'*1024*4 + b'\n')
     gcs_file.close()
     self.tmp_filenames_to_clean_up.append(filename)
 #[END write]
@@ -179,4 +179,5 @@ class MainPage(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([('/', MainPage)],
                               debug=True)
+app = wrap_wsgi_app(app)
 #[END sample]
